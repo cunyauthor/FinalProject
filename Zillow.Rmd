@@ -1,0 +1,82 @@
+---
+title: "Zillow"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#My Zillow Web Services Identification (ZWSID) is: X1-ZWz19h92uusvm3_7ucak
+
+```{r Zillow}
+
+list.of.packages <- c("ZillowR","XML","RCurl","methods","DT")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
+library(ZillowR)
+library(XML)
+library(RCurl)
+library(methods)
+library(DT)
+
+X=GetSearchResults(address = "420 Saint Lawrence Ave", citystatezip = "Bronx, NY, 10473",  rentzestimate = FALSE, zws_id = "X1-ZWz19h92uusvm3_7ucak",  url ="http://www.zillow.com/webservice/GetSearchResults.htm")
+
+# Read and Print XML
+results <- xmlToList(X$response[["results"]])
+
+getValRange <- function(x, hilo) {
+  ifelse(hilo %in% unlist(dimnames(x)), x["text",hilo][[1]], NA)
+}
+
+out <- apply(results, MAR=2, function(property) {
+  zpid <- property$zpid
+  links <- unlist(property$links)
+  address <- unlist(property$address)
+  z <- property$zestimate
+  zestdf <- list(
+    amount=ifelse("text" %in% names(z$amount), z$amount$text, NA),
+    lastupdated=z$"last-updated",
+    valueChange=ifelse(length(z$valueChange)==0, NA, z$valueChange),
+    valueLow=getValRange(z$valuationRange, "low"),
+    valueHigh=getValRange(z$valuationRange, "high"),
+    percentile=z$percentile)  
+  list(id=zpid, links, address, zestdf)
+})
+
+data1 <- as.data.frame(do.call(rbind, lapply(out, unlist)), 
+  row.names=seq_len(length(out)))
+
+datatable(data1)
+
+Y=GetDeepSearchResults(address = "420 Saint Lawrence Ave", citystatezip = "Bronx, NY, 10473",  rentzestimate = FALSE, zws_id = "X1-ZWz19h92uusvm3_7ucak",  url = "http://www.zillow.com/webservice/GetDeepSearchResults.htm")
+
+# Read and Print XML
+results <- xmlToList(Y$response[["results"]])
+
+getValRange <- function(x, hilo) {
+  ifelse(hilo %in% unlist(dimnames(x)), x["text",hilo][[1]], NA)
+}
+
+out <- apply(results, MAR=2, function(property) {
+  zpid <- property$zpid
+  links <- unlist(property$links)
+  address <- unlist(property$address)
+  z <- property$zestimate
+  zestdf <- list(
+    amount=ifelse("text" %in% names(z$amount), z$amount$text, NA),
+    lastupdated=z$"last-updated",
+    valueChange=ifelse(length(z$valueChange)==0, NA, z$valueChange),
+    valueLow=getValRange(z$valuationRange, "low"),
+    valueHigh=getValRange(z$valuationRange, "high"),
+    percentile=z$percentile)  
+  list(id=zpid, links, address, zestdf)
+})
+
+data2 <- as.data.frame(do.call(rbind, lapply(out, unlist)), 
+  row.names=seq_len(length(out)))
+
+datatable(data2)
+```
+
