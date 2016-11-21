@@ -7,7 +7,7 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-#My Zillow Web Services Identification (ZWSID) is: X1-ZWz19h92uusvm3_7ucak
+#My Zillow Web Services Identification (ZWSID) is: XYZ
 
 ```{r Zillow}
 
@@ -21,7 +21,7 @@ library(RCurl)
 library(methods)
 library(DT)
 
-X=GetSearchResults(address = "420 Saint Lawrence Ave", citystatezip = "Bronx, NY, 10473",  rentzestimate = FALSE, zws_id = "X1-ZWz19h92uusvm3_7ucak",  url ="http://www.zillow.com/webservice/GetSearchResults.htm")
+X=GetSearchResults(address = "420 Saint Lawrence Ave", citystatezip = "Bronx, NY, 10473",  rentzestimate = FALSE, zws_id = "XYZ",  url ="http://www.zillow.com/webservice/GetSearchResults.htm")
 
 # Read and Print XML
 results <- xmlToList(X$response[["results"]])
