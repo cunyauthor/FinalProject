@@ -1,0 +1,330 @@
+---
+title: "WebScapingZillow"
+author: "Team"
+date: "Nov 17, 2016"
+output: html_document
+---
+ 
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+ 
+##  Introduction:
+
+```{r Web_Scraping_with_R}
+ 
+list.of.packages <- c("rvest","plyr","stringr","DT")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+ 
+library(rvest)
+library(plyr)
+library(stringr)
+library(DT) 
+
+##############################################################################################################
+# Dataframe 1
+# 
+# Filtered by 
+ 
+Price={}
+DSPrice={}
+DSAddress={}
+ 
+Pages = c(
+  
+"https://www.trulia.com/NY/Bronx/",
+"https://www.trulia.com/NY/Bronx/2_p/",
+"https://www.trulia.com/NY/Bronx/3_p/",
+"https://www.trulia.com/NY/Bronx/3_p/",
+"https://www.trulia.com/NY/Bronx/4_p/",
+"https://www.trulia.com/NY/Bronx/4_p/",
+"https://www.trulia.com/NY/Bronx/5_p/",
+"https://www.trulia.com/NY/Bronx/5_p/",
+"https://www.trulia.com/NY/Bronx/6_p/",
+"https://www.trulia.com/NY/Bronx/6_p/",
+"https://www.trulia.com/NY/Bronx/7_p/",
+"https://www.trulia.com/NY/Bronx/7_p/",
+"https://www.trulia.com/NY/Bronx/8_p/",
+"https://www.trulia.com/NY/Bronx/8_p/",
+"https://www.trulia.com/NY/Bronx/9_p/",
+"https://www.trulia.com/NY/Bronx/9_p/",
+"https://www.trulia.com/NY/Bronx/10_p/",
+"https://www.trulia.com/NY/Bronx/10_p/",
+"https://www.trulia.com/NY/Bronx/11_p/",
+"https://www.trulia.com/NY/Bronx/11_p/",
+"https://www.trulia.com/NY/Bronx/12_p/",
+"https://www.trulia.com/NY/Bronx/12_p/",
+"https://www.trulia.com/NY/Bronx/13_p/",
+"https://www.trulia.com/NY/Bronx/13_p/",
+"https://www.trulia.com/NY/Bronx/14_p/",
+"https://www.trulia.com/NY/Bronx/14_p/",
+"https://www.trulia.com/NY/Bronx/15_p/",
+"https://www.trulia.com/NY/Bronx/15_p/",
+"https://www.trulia.com/NY/Bronx/16_p/",
+"https://www.trulia.com/NY/Bronx/16_p/",
+"https://www.trulia.com/NY/Bronx/17_p/",
+"https://www.trulia.com/NY/Bronx/17_p/",
+"https://www.trulia.com/NY/Bronx/18_p/",
+"https://www.trulia.com/NY/Bronx/18_p/",
+"https://www.trulia.com/NY/Bronx/19_p/",
+"https://www.trulia.com/NY/Bronx/19_p/",
+"https://www.trulia.com/NY/Bronx/20_p/",
+"https://www.trulia.com/NY/Bronx/20_p/",
+"https://www.trulia.com/NY/Bronx/21_p/",
+"https://www.trulia.com/NY/Bronx/21_p/",
+"https://www.trulia.com/NY/Bronx/22_p/",
+"https://www.trulia.com/NY/Bronx/22_p/",
+"https://www.trulia.com/NY/Bronx/23_p/",
+"https://www.trulia.com/NY/Bronx/23_p/",
+"https://www.trulia.com/NY/Bronx/24_p/",
+"https://www.trulia.com/NY/Bronx/24_p/",
+"https://www.trulia.com/NY/Bronx/25_p/",
+"https://www.trulia.com/NY/Bronx/25_p/",
+"https://www.trulia.com/NY/Bronx/26_p/",
+"https://www.trulia.com/NY/Bronx/26_p/",
+"https://www.trulia.com/NY/Bronx/27_p/",
+"https://www.trulia.com/NY/Bronx/27_p/",
+"https://www.trulia.com/NY/Bronx/28_p/",
+"https://www.trulia.com/NY/Bronx/28_p/",
+"https://www.trulia.com/NY/Bronx/29_p/",
+"https://www.trulia.com/NY/Bronx/29_p/",
+"https://www.trulia.com/NY/Bronx/30_p/",
+"https://www.trulia.com/NY/Bronx/30_p/",
+"https://www.trulia.com/NY/Bronx/31_p/",
+"https://www.trulia.com/NY/Bronx/31_p/",
+"https://www.trulia.com/NY/Bronx/32_p/",
+"https://www.trulia.com/NY/Bronx/32_p/",
+"https://www.trulia.com/NY/Bronx/33_p/",
+"https://www.trulia.com/NY/Bronx/33_p/",
+"https://www.trulia.com/NY/Bronx/34_p/",
+"https://www.trulia.com/NY/Bronx/34_p/",
+"https://www.trulia.com/NY/Bronx/35_p/",
+"https://www.trulia.com/NY/Bronx/35_p/",
+"https://www.trulia.com/NY/Bronx/36_p/",
+"https://www.trulia.com/NY/Bronx/36_p/",
+"https://www.trulia.com/NY/Bronx/37_p/",
+"https://www.trulia.com/NY/Bronx/37_p/",
+"https://www.trulia.com/NY/Bronx/38_p/",
+"https://www.trulia.com/NY/Bronx/38_p/",
+"https://www.trulia.com/NY/Bronx/39_p/",
+"https://www.trulia.com/NY/Bronx/39_p/",
+"https://www.trulia.com/NY/Bronx/40_p/",
+"https://www.trulia.com/NY/Bronx/40_p/",
+"https://www.trulia.com/NY/Bronx/41_p/",
+"https://www.trulia.com/NY/Bronx/41_p/",
+"https://www.trulia.com/NY/Bronx/42_p/",
+"https://www.trulia.com/NY/Bronx/42_p/",
+"https://www.trulia.com/NY/Bronx/43_p/",
+"https://www.trulia.com/NY/Bronx/43_p/",
+"https://www.trulia.com/NY/Bronx/44_p/",
+"https://www.trulia.com/NY/Bronx/44_p/",
+"https://www.trulia.com/NY/Bronx/45_p/",
+"https://www.trulia.com/NY/Bronx/45_p/",
+"https://www.trulia.com/NY/Bronx/46_p/",
+"https://www.trulia.com/NY/Bronx/46_p/",
+"https://www.trulia.com/NY/Bronx/47_p/",
+"https://www.trulia.com/NY/Bronx/47_p/",
+"https://www.trulia.com/NY/Bronx/48_p/",
+"https://www.trulia.com/NY/Bronx/48_p/",
+"https://www.trulia.com/NY/Bronx/49_p/",
+"https://www.trulia.com/NY/Bronx/49_p/",
+"https://www.trulia.com/NY/Bronx/50_p/",
+"https://www.trulia.com/NY/Bronx/50_p/",
+"https://www.trulia.com/NY/Bronx/51_p/",
+"https://www.trulia.com/NY/Bronx/51_p/",
+"https://www.trulia.com/NY/Bronx/52_p/",
+"https://www.trulia.com/NY/Bronx/52_p/",
+"https://www.trulia.com/NY/Bronx/53_p/",
+"https://www.trulia.com/NY/Bronx/53_p/",
+"https://www.trulia.com/NY/Bronx/54_p/",
+"https://www.trulia.com/NY/Bronx/54_p/",
+"https://www.trulia.com/NY/Bronx/55_p/",
+"https://www.trulia.com/NY/Bronx/55_p/",
+"https://www.trulia.com/NY/Bronx/56_p/",
+"https://www.trulia.com/NY/Bronx/56_p/",
+"https://www.trulia.com/NY/Bronx/57_p/",
+"https://www.trulia.com/NY/Bronx/57_p/",
+"https://www.trulia.com/NY/Bronx/58_p/",
+"https://www.trulia.com/NY/Bronx/58_p/",
+"https://www.trulia.com/NY/Bronx/59_p/",
+"https://www.trulia.com/NY/Bronx/59_p/",
+"https://www.trulia.com/NY/Bronx/60_p/",
+"https://www.trulia.com/NY/Bronx/60_p/",
+"https://www.trulia.com/NY/Bronx/61_p/",
+"https://www.trulia.com/NY/Bronx/61_p/",
+"https://www.trulia.com/NY/Bronx/62_p/",
+"https://www.trulia.com/NY/Bronx/62_p/",
+"https://www.trulia.com/NY/Bronx/63_p/",
+"https://www.trulia.com/NY/Bronx/63_p/",
+"https://www.trulia.com/NY/Bronx/64_p/",
+"https://www.trulia.com/NY/Bronx/64_p/",
+"https://www.trulia.com/NY/Bronx/65_p/",
+"https://www.trulia.com/NY/Bronx/65_p/",
+"https://www.trulia.com/NY/Bronx/66_p/",
+"https://www.trulia.com/NY/Bronx/66_p/",
+"https://www.trulia.com/NY/Bronx/67_p/",
+"https://www.trulia.com/NY/Bronx/67_p/",
+"https://www.trulia.com/NY/Bronx/68_p/",
+"https://www.trulia.com/NY/Bronx/68_p/",
+"https://www.trulia.com/NY/Bronx/69_p/",
+"https://www.trulia.com/NY/Bronx/69_p/",
+"https://www.trulia.com/NY/Bronx/70_p/",
+"https://www.trulia.com/NY/Bronx/70_p/",
+"https://www.trulia.com/NY/Bronx/71_p/",
+"https://www.trulia.com/NY/Bronx/71_p/",
+"https://www.trulia.com/NY/Bronx/72_p/",
+"https://www.trulia.com/NY/Bronx/72_p/",
+"https://www.trulia.com/NY/Bronx/73_p/",
+"https://www.trulia.com/NY/Bronx/73_p/",
+"https://www.trulia.com/NY/Bronx/74_p/",
+"https://www.trulia.com/NY/Bronx/74_p/",
+"https://www.trulia.com/NY/Bronx/75_p/",
+"https://www.trulia.com/NY/Bronx/75_p/",
+"https://www.trulia.com/NY/Bronx/76_p/",
+"https://www.trulia.com/NY/Bronx/76_p/",
+"https://www.trulia.com/NY/Bronx/77_p/",
+"https://www.trulia.com/NY/Bronx/77_p/",
+"https://www.trulia.com/NY/Bronx/78_p/",
+"https://www.trulia.com/NY/Bronx/78_p/",
+"https://www.trulia.com/NY/Bronx/79_p/",
+"https://www.trulia.com/NY/Bronx/79_p/",
+"https://www.trulia.com/NY/Bronx/80_p/",
+"https://www.trulia.com/NY/Bronx/80_p/",
+"https://www.trulia.com/NY/Bronx/81_p/",
+"https://www.trulia.com/NY/Bronx/81_p/",
+"https://www.trulia.com/NY/Bronx/82_p/",
+"https://www.trulia.com/NY/Bronx/82_p/",
+"https://www.trulia.com/NY/Bronx/83_p/",
+"https://www.trulia.com/NY/Bronx/83_p/",
+"https://www.trulia.com/NY/Bronx/84_p/",
+"https://www.trulia.com/NY/Bronx/84_p/",
+"https://www.trulia.com/NY/Bronx/85_p/",
+"https://www.trulia.com/NY/Bronx/85_p/",
+"https://www.trulia.com/NY/Bronx/86_p/",
+"https://www.trulia.com/NY/Bronx/86_p/",
+"https://www.trulia.com/NY/Bronx/87_p/",
+"https://www.trulia.com/NY/Bronx/87_p/",
+"https://www.trulia.com/NY/Bronx/88_p/",
+"https://www.trulia.com/NY/Bronx/89_p/",
+"https://www.trulia.com/NY/Bronx/90_p/",
+"https://www.trulia.com/NY/Bronx/91_p/",
+"https://www.trulia.com/NY/Bronx/92_p/",
+"https://www.trulia.com/NY/Bronx/93_p/",
+"https://www.trulia.com/NY/Bronx/94_p/",
+"https://www.trulia.com/NY/Bronx/95_p/",
+"https://www.trulia.com/NY/Bronx/96_p/",
+"https://www.trulia.com/NY/Bronx/97_p/",
+"https://www.trulia.com/NY/Bronx/98_p/",
+"https://www.trulia.com/NY/Bronx/99_p/",
+"https://www.trulia.com/NY/Bronx/100_p/",
+"https://www.trulia.com/NY/Bronx/101_p/",
+"https://www.trulia.com/NY/Bronx/102_p/",
+"https://www.trulia.com/NY/Bronx/103_p/",
+"https://www.trulia.com/NY/Bronx/104_p/",
+"https://www.trulia.com/NY/Bronx/105_p/",
+"https://www.trulia.com/NY/Bronx/106_p/",
+"https://www.trulia.com/NY/Bronx/107_p/",
+"https://www.trulia.com/NY/Bronx/108_p/",
+"https://www.trulia.com/NY/Bronx/109_p/",
+"https://www.trulia.com/NY/Bronx/110_p/",
+"https://www.trulia.com/NY/Bronx/111_p/",
+"https://www.trulia.com/NY/Bronx/112_p/",
+"https://www.trulia.com/NY/Bronx/113_p/",
+"https://www.trulia.com/NY/Bronx/114_p/",
+"https://www.trulia.com/NY/Bronx/115_p/",
+"https://www.trulia.com/NY/Bronx/116_p/",
+"https://www.trulia.com/NY/Bronx/117_p/",
+"https://www.trulia.com/NY/Bronx/118_p/",
+"https://www.trulia.com/NY/Bronx/119_p/",
+"https://www.trulia.com/NY/Bronx/120_p/",
+"https://www.trulia.com/NY/Bronx/121_p/",
+"https://www.trulia.com/NY/Bronx/122_p/",
+"https://www.trulia.com/NY/Bronx/123_p/",
+"https://www.trulia.com/NY/Bronx/124_p/",
+"https://www.trulia.com/NY/Bronx/125_p/",
+"https://www.trulia.com/NY/Bronx/126_p/",
+"https://www.trulia.com/NY/Bronx/127_p/",
+"https://www.trulia.com/NY/Bronx/128_p/",
+"https://www.trulia.com/NY/Bronx/129_p/",
+"https://www.trulia.com/NY/Bronx/130_p/",
+"https://www.trulia.com/NY/Bronx/131_p/",
+"https://www.trulia.com/NY/Bronx/132_p/",
+"https://www.trulia.com/NY/Bronx/133_p/",
+"https://www.trulia.com/NY/Bronx/134_p/",
+"https://www.trulia.com/NY/Bronx/135_p/",
+"https://www.trulia.com/NY/Bronx/136_p/",
+"https://www.trulia.com/NY/Bronx/137_p/",
+"https://www.trulia.com/NY/Bronx/138_p/",
+"https://www.trulia.com/NY/Bronx/139_p/",
+"https://www.trulia.com/NY/Bronx/140_p/",
+"https://www.trulia.com/NY/Bronx/141_p/",
+"https://www.trulia.com/NY/Bronx/142_p/",
+"https://www.trulia.com/NY/Bronx/143_p/",
+"https://www.trulia.com/NY/Bronx/144_p/",
+"https://www.trulia.com/NY/Bronx/145_p/",
+"https://www.trulia.com/NY/Bronx/146_p/",
+"https://www.trulia.com/NY/Bronx/147_p/",
+"https://www.trulia.com/NY/Bronx/148_p/",
+"https://www.trulia.com/NY/Bronx/149_p/",
+"https://www.trulia.com/NY/Bronx/150_p/",
+"https://www.trulia.com/NY/Bronx/151_p/",
+"https://www.trulia.com/NY/Bronx/152_p/",
+"https://www.trulia.com/NY/Bronx/153_p/",
+"https://www.trulia.com/NY/Bronx/154_p/",
+"https://www.trulia.com/NY/Bronx/155_p/",
+"https://www.trulia.com/NY/Bronx/156_p/",
+"https://www.trulia.com/NY/Bronx/157_p/",
+"https://www.trulia.com/NY/Bronx/158_p/",
+"https://www.trulia.com/NY/Bronx/159_p/",
+"https://www.trulia.com/NY/Bronx/160_p/",
+"https://www.trulia.com/NY/Bronx/161_p/",
+"https://www.trulia.com/NY/Bronx/162_p/",
+"https://www.trulia.com/NY/Bronx/163_p/",
+"https://www.trulia.com/NY/Bronx/164_p/",
+"https://www.trulia.com/NY/Bronx/165_p/",
+"https://www.trulia.com/NY/Bronx/166_p/",
+"https://www.trulia.com/NY/Bronx/167_p/",
+"https://www.trulia.com/NY/Bronx/168_p/",
+"https://www.trulia.com/NY/Bronx/169_p/",
+"https://www.trulia.com/NY/Bronx/170_p/",
+"https://www.trulia.com/NY/Bronx/171_p/",
+"https://www.trulia.com/NY/Bronx/172_p/",
+"https://www.trulia.com/NY/Bronx/173_p/")
+ 
+for(i in 1:257){
+  
+  RealEstate =read_html(Pages[i])
+  
+  Price=RealEstate %>%  html_nodes("span[class = 'cardPrice h4 man pan typeEmphasize noWrap typeTruncate ']") %>% html_text()
+  Price <- rbind(Price,data.frame(Price))
+  
+  Address=RealEstate %>%  html_nodes("p[class = 'typeTruncate typeLowlight']") %>% html_text()
+  Address <- rbind(Address,data.frame(Address))
+  
+  DSPrice=rbind.fill(Price)
+  DSAddress=rbind.fill(Address)
+  
+  write.table(DSPrice, file = "/Users/fionaho/Desktop/Price.csv", append = TRUE, quote = TRUE, sep = "",
+            eol = "\n", na = "NA", dec = ".", row.names = TRUE,
+            col.names = TRUE, qmethod = c("escape", "double"),
+            fileEncoding = "")
+  
+  write.table(DSAddress, file = "/Users/fionaho/Desktop/Address.csv", append = TRUE, quote = TRUE, sep = "",
+            eol = "\n", na = "NA", dec = ".", row.names = TRUE,
+            col.names = TRUE, qmethod = c("escape", "double"),
+            fileEncoding = "")
+  
+  
+}
+
+
+
+```
+ 
+```{r Conclusion, echo=FALSE}
+ 
+##  Conclusion
+
+```
+ 
