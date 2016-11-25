@@ -1,0 +1,99 @@
+---
+title: "Final Project IS607"
+author: "Marco Siqueira Campos, Sharon Morris"
+date: "11/23/2016"
+output: html_document
+---
+
+# Data Cleaning
+
+### Import data
+
+Dowload crime data from NYC OpenData, NYPD Complaint Data Historic 2015 
+
+```{r}
+temp <- tempfile()
+download.file("https://raw.githubusercontent.com/cunyauthor/FinalProject/master/NYPD_Complaint_Data_Historic.zip",temp)
+NYPD <- read.csv(unz(temp, "NYPD_Complaint_Data_Historic.csv"), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
+unlink(temp)
+str(NYPD)
+head(NYPD)
+```
+
+
+### Explore the data
+
+```{r}
+class(NYPD) #view class
+dim(NYPD)   #view dimensions
+names(NYPD) #explore the column names
+
+
+#unstand the structure
+str(NYPD)   
+```
+
+
+### Create dataset with required variables
+
+```{r}
+library(dplyr)
+new <- select(NYPD, RPT_DT, OFNS_DESC, OFNS_DESC, LAW_CAT_CD, BORO_NM, ADDR_PCT_CD,
+              Latitude, Longitude, Lat_Lon)
+
+sapply(new, function(x) sum(is.na(x))) # explore na in the dataset
+
+noNas <- na.omit(new) # remove NAs from data
+sapply(noNas, function(x) sum(is.na(x)))
+       
+glimpse(noNas) #look at the data
+
+summary(noNas) #summarize the data
+```
+
+### Visual data
+
+```{r}
+barplot(table(noNas$LAW_CAT_CD))
+barplot(table(noNas$OFNS_DESC))
+barplot(table(noNas$BORO_NM))
+```
+
+### Create dataset for Bronx
+
+```{r}
+bronx <- filter(noNas, BORO_NM == "BRONX") # filter our crimes committed in the Bronx
+barplot(table(bronx$LAW_CAT_CD))
+```
+
+### Assign zipcodes to precint numbers
+
+```{r}
+library(plyr)
+bronx$PCT_ZIP <- mapvalues(bronx$ADDR_PCT_CD, 
+                           from =c("40", "41", "42", "43", "44", "45", "46", 
+                                   "47", "48", "49", "50", "52"), to = 
+                               c("10454", "10459", "10451", "10473", "10452",
+                                 "10465", "10457", "10466", "10457", "10461",
+                                 "10461", "10467"))
+head(bronx)
+```
+
+
+### Convert long and latittude to zipodes
+
+```{r}
+library(ggmap)
+res <- mapply(FUN = function(lon, lat) { 
+  revgeocode(c(lon, lat), output = "more") 
+  }, 
+  bronx$Longitude, bronx$Latitude
+  )
+cbind(bronx, data.table::rbindlist(res, fill = TRUE))
+
+res <- lapply(with(bronx, paste(latitude, longitude, sep = ",")), geocode, output = "more")
+transform(bronx, zipcode = sapply(res, "[[", "locality"))
+
+names(bronx)
+```
+
