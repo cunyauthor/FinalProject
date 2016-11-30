@@ -16,6 +16,7 @@ temp <- tempfile()
 download.file("https://raw.githubusercontent.com/cunyauthor/FinalProject/master/NYPD_Complaint_Data_Historic.zip",temp)
 NYPD <- read.csv(unz(temp, "NYPD_Complaint_Data_Historic.csv"), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
 unlink(temp)
+
 str(NYPD)
 head(NYPD)
 ```
@@ -64,6 +65,8 @@ barplot(table(noNas$BORO_NM))
 ```{r}
 bronx <- filter(noNas, BORO_NM == "BRONX") # filter our crimes committed in the Bronx
 barplot(table(bronx$LAW_CAT_CD))
+
+
 ```
 
 ### Assign zipcodes to precint numbers
@@ -77,23 +80,48 @@ bronx$PCT_ZIP <- mapvalues(bronx$ADDR_PCT_CD,
                                  "10465", "10457", "10466", "10457", "10461",
                                  "10461", "10467"))
 head(bronx)
+
+write.csv(bronx, file = 'bronxcrimedata.csv', row.names = FALSE)
+```
+
+
+```{r}
+set.seed(123) # set the seed to standartize
+bronx<-bronx[sample(nrow(bronx),100796),] # random the sample to standardize the sequence
+bronx$id<-1:100796 # create a id to check
 ```
 
 
 ### Convert long and latittude to zipodes
 
 ```{r}
+#bronx_s<-bronx[1:2400,]# 29th 11 Marco sample
+bronx_s<-bronx[2401:4800,]# 29th 11 Sharon sample
+#bronx_s<-bronx[4801:7200,]# 30th 11 Marco sample
+#bronx_s<-bronx[7201:9600,]# 30th 11 Sharon sample
+#bronx_s<-bronx[9601:10000,]# 30th 11 Ka-Man or Tahla sample
+ 
+ 
+res <- mapply(FUN = function(lon, lat) {
+        revgeocode(c(lon, lat), output = "more")
+},
+bronx_s$Longitude, bronx_s$Latitude
+)
+ 
+res1<-rbind_all(lapply(res, as.data.frame))
+View(res1)
+ 
+bronx_s<-cbind(bronx_s,res1) # add full address to data base
+ 
+
+
+
+
 library(ggmap)
-res <- mapply(FUN = function(lon, lat) { 
-  revgeocode(c(lon, lat), output = "more") 
-  }, 
-  bronx$Longitude, bronx$Latitude
-  )
-cbind(bronx, data.table::rbindlist(res, fill = TRUE))
+revgeocode(c(bronx$Longitude[1], bronx$Latitude[1]))
+bronx$Address <- mapply(FUN = function(lon, lat) revgeocode(c(lon, lat)), 
+                        bronx$Longitude, bronx$Latitude)
 
-res <- lapply(with(bronx, paste(latitude, longitude, sep = ",")), geocode, output = "more")
-transform(bronx, zipcode = sapply(res, "[[", "locality"))
-
-names(bronx)
+tail(bronx)
 ```
 
