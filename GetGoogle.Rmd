@@ -1,0 +1,43 @@
+---
+title: "Get Google Info"
+author: "Ka Man Chan"
+date: "November 29, 2016"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+```{r LongLat}
+
+list.of.packages <- c("dplyr","ggmap")
+new.packages <- list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
+if(length(new.packages)) install.packages(new.packages)
+
+
+library(ggmap)
+
+# Read CSV into R
+MyData <- read.csv(file="/Users/fionaho/Desktop/latlong.csv", header=TRUE, sep=",")
+#for (i in 1:1455)
+for (i in 1:nrow(MyData))
+{
+  
+  res <- revgeocode(c(MyData[i,2],MyData[i,1]), output="more")
+ 
+   write.table(res, file = "/Users/fionaho/Desktop/Detail.csv", append = TRUE, quote = TRUE, sep = "",
+            eol = "\n", na = "NA", dec = ".", row.names = TRUE,
+            col.names = TRUE, qmethod = c("escape", "double"),
+            fileEncoding = "")
+  
+}
+
+
+```
+
+## Including Plots
+
