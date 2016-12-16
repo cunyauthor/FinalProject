@@ -1,0 +1,149 @@
+---
+title: "Untitled"
+author: "Talha Muhammad"
+date: "December 4, 2016"
+output: html_document
+---
+
+```{r packages, warning=FALSE,message=FALSE}
+library(RCurl)
+library(XML)
+library(tidyr)
+library(dplyr)
+library(stringr)
+```
+
+
+##Planning database
+source:http://www1.nyc.gov/site/planning/data-maps/open-data/dwn-pluto-mappluto.page
+
+
+```{r Identify Addresses}
+path='C:/Users/talha/Documents/Training/CUNY Classes/IS607/Final/nyc_pluto_16v2/BORO_zip_files_csv'
+#source pluto database from NYC
+ 
+plutodata<-read.csv(file.path(path,"BK.csv"))
+
+#focus analysis on certain zip codes
+#central brooklyn, northwest brooklyn and greenpoint
+#filter by zip code
+nw<-c("11201", "11205", "11215", "11217", "11231")
+gp<-c("11211", "11222")
+cb<-c("11212", "11213", "11216", "11233", "11238")
+
+#select residential buildings 
+#filter data by building types and codes
+#two family
+fmly<-c("B1","B2","B3")
+#walkup Apartments
+walkup<-c("C0","C1","C2","C3","C4","C5","C6","C7")
+# Elevator Apartments
+elev<-c("D0","D1","D3","D4","D5","D6","D7","D8")
+#Condominiums
+condo<-c("R1","R2","R3","R4","R6","RD","RM","RR")
+#combined buildings
+# limiting type of buildings due to constraints imposed by zillow of 1000 API calls per day
+buildings<-c(elev,condo)
+
+#select neighborhood areas and building types
+selectdata<-plutodata %>% filter(ZipCode==nw[1] | ZipCode==nw[2] | ZipCode==nw[3] | ZipCode==nw[4]| ZipCode==nw[5] | ZipCode==cb[1] | ZipCode==cb[2]| ZipCode==cb[3]| ZipCode==cb[4] | ZipCode==cb[5])
+
+#select buidings
+finaldata<-selectdata[(selectdata$BldgClass %in% buildings),]
+#select columns
+finaldata<-select(finaldata,one_of(c("CD","CT2010","CB2010","SchoolDist","ZipCode","Address","BldgClass","UnitsRes","YearBuilt","NumFloors")))
+
+# dimensions of data
+dim(finaldata)
+# head of the data
+head(finaldata)
+#convert factors to character types
+finaldata$Address<-as.character(finaldata$Address)
+finaldata$BldgClass<-as.character(finaldata$BldgClass)
+#structure of dataset
+str(finaldata)
+# Count of Zipcodes covered
+finaldata %>% count(ZipCode)
+# Count of Building Class
+finaldata %>% count(BldgClass)
+```
+
+## Use Planning addresses to Make API Calls to Zillow
+
+```{r Prepare for Zillow}
+#select all the addresses
+address<-finaldata$Address
+#make it to zillow form
+address<-str_replace_all(address," ","+")
+#city state to zillow form
+citystate<-str_c("Brooklyn%2C+NY+",finaldata$ZipCode)
+
+#URL for the deep search API at Zillow
+zillow_url<-"http://www.zillow.com/webservice/GetDeepSearchResults.htm?"
+
+#define a function to make api calls
+zillowcaller<-function(add,zip,nos,start,zillowadd){
+for (i in 1:nos) {
+  feed<-getURL(paste0(zillowadd,"zws-id=",getOption("zillowid"),"&address=",add[i+start],"&citystatezip=",zip[i+start]))
+  Sys.sleep(1)
+  if(i==1){
+    last<-xmlParse(feed)
+  }
+  else {
+    temp<-xmlParse(feed)
+    last<-c(last,temp)
+  }
+}
+  return(last)
+}
+
+#inspiration for zillow function code
+#http://stackoverflow.com/questions/17349630/r-dataframe-from-xml-when-values-are-multiple-or-missing
+
+# define zillow function to parse and classify zillow api calls
+zillowfunction<-function(xmldata){
+do.call(rbind, xpathApply(xmldata, "//result", function(node) {
+
+   zpid<-xmlValue(node[["zpid"]])
+   bathrooms <- xmlValue(node[["bathrooms"]])
+   bedrooms <- xmlValue(node[["bedrooms"]])
+   sqft<-xmlValue(node[["finishedSqFt"]])
+   st <- xpathSApply(node,"./address/street", xmlValue)
+   zip <- xpathSApply(node,"./address/zipcode", xmlValue)
+   city<-xpathSApply(node,"./address/city", xmlValue)
+   state<-xpathSApply(node,"./address/state", xmlValue)
+   lat<-xpathSApply(node,"./address/latitude", xmlValue)
+   long<-xpathSApply(node,"./address/longitude", xmlValue)
+   valuation<-xpathSApply(node,"./zestimate/amount", xmlValue)
+   lowval<-xpathSApply(node,"./zestimate/valuationRange/low", xmlValue)
+   highval<-xpathSApply(node,"./zestimate/valuationRange/high", xmlValue)
+   nb<-xpathSApply(node,"//result/localRealEstate/region",xmlAttrs)[[1]]
+   nbid<-xpathSApply(node,"//result/localRealEstate/region",xmlAttrs)[[2]]
+   return(data.frame(zpid,bathrooms, bedrooms,sqft,st,city,state,lat,long,valuation,lowval,highval,nb,nbid, stringsAsFactors = FALSE))
+}))
+}
+```
+
+```{r make Zillow calls}
+#zillow aggregator function
+zillowaggregator <- function(call){
+for (i in 2:length(call)) {
+  if(i==2) {
+    output<-rbind(zillowfunction(call[[1]]),zillowfunction(call[[2]]))
+  }
+else {
+  output<-rbind(output,zillowfunction(call[[i]]))
+     }
+}
+  return(output)
+}
+
+#return a list of calls to api
+#daily limit of 1000 calls  
+firstcall<-zillowcaller(address,citystate,40,0,zillow_url)
+zillowdata<-zillowaggregator(firstcall)
+secondcall<-zillowcaller(address,citystate,980,40,zillow_url)
+two<-zillowaggregator(secondcall)
+thirdcall<-zillowcaller(address,citystate,200,1520,zillow_url)
+three<-zillowaggregator(thirdcall)
+zillowdata<-rbind(zillowdata,three)
