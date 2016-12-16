@@ -30,8 +30,8 @@ Property sales data from August to November 2016 were scraped from the real esta
 #### Obtain the data
 
 ```{r}
-library(plyr)
 library(dplyr)
+library(plyr)
 library(corrplot)
 library(ggmap)
 ```
@@ -216,13 +216,105 @@ nyc_full$v_crime_rate<-(nyc_full$freq_violent_crime/nyc_full$pop)*100000 * 45855
 ```
 
 
+```{r}
+# Database schema
+library(RMySQL)
+
+#source(logincredentiasl.R)
+connection <- dbConnect(MySQL(), user=MySQL_Username, password=MySQL_Password)
+
+dbSendQuery(connection, 'CREATE SCHEMA IF NOT EXISTS SYS;')
+dbSendQuery(connection, 'USE SYS;')
+dbSendQuery(connection, 'DROP TABLE IF EXISTS nyc_1;')
+dbSendQuery(connection, 'Drop Table If Exists nyc_full;')
+dbSendQuery(connection, 'Drop Table If Exists nyc_s1;')
+dbSendQuery(connection, 'Drop Table If Exists nyc_s12;')
+dbSendQuery(connection, 'Drop Table If Exists nyc_s2;')
+dbSendQuery(connection, 'Drop Table If Exists trulia;')
+dbSendQuery(connection, 'Drop Table If Exists zip_pop;')
+
+
+nyc1 <- dbSendQuery(connection," CREATE TABLE nyc_1
+(
+`RPT_DT` varchar(100) NOT NULL,
+`OFNS_DESC` varchar(100) NOT NULL,
+`LAW_CAT_CD` varchar(100) NOT NULL,
+`BORO_NM` varchar(100) NOT NULL,
+`ADDR_PCT_CD` varchar(100) NOT NULL,
+`Latitude` varchar(100) NOT NULL,
+`Longitude` varchar(100) NOT NULL,
+`Lat_Lon` varchar(100) NOT NULL,
+`id` varchar(100) NOT NULL,
+`address` varchar(200) NOT NULL,
+`street_number` varchar(100) NOT NULL,
+`route` varchar(100) NOT NULL,
+`neighborhood` varchar(100) NOT NULL,
+`political` varchar(100) NOT NULL,
+`administrative_area_level_2` varchar(100) NOT NULL,
+`administrative_area_level_1` varchar(100) NOT NULL,
+`country` varchar(100) NOT NULL,
+`postal_code` varchar(100) NOT NULL,
+`postal_code_suffix` varchar(100) NOT NULL,
+`locality` varchar(100) NOT NULL,
+`premise` varchar(100) NOT NULL,
+`crime_v` varchar(100) NOT NULL
+
+);")
+
+nycFull <- dbSendQuery(connection, "CREATE TABLE nyc_full
+(
+`zip` varchar(100) NOT NULL,
+`Median_sales_price` varchar(100) NOT NULL,
+`Price_sqft` varchar(100) NOT NULL,
+`freq_crime` varchar(100) NOT NULL,
+`freq_violent_crime` varchar(100) NOT NULL,
+`pop` varchar(100) NOT NULL,
+`crime_rate` varchar(100) NOT NULL,
+`v_crime_rate` varchar(100) NOT NULL
+);")
+
+nycs1 <- dbSendQuery(connection, "CREATE TABLE nyc_s1
+(
+`zip` varchar(100) NOT NULL,
+`freq_crime` varchar(100) NOT NULL
+
+);")
+
+nycs12 <- dbSendQuery(connection, "CREATE TABLE nyc_s12
+(
+`zip` varchar(100) NOT NULL,
+`freq_crime` varchar(100) NOT NULL,
+`freq_violent_crime` varchar(100) NOT NULL
+
+);")
+
+nycs2 <- dbSendQuery(connection, "CREATE TABLE nyc_s2
+(
+`zip` varchar(100) NOT NULL,
+`freq_violent_crime` varchar(100) NOT NULL
+
+);")
+
+truliaSQL <- dbSendQuery(connection, "CREATE TABLE trulia
+(
+`X` varchar(100) NOT NULL,
+`zip` varchar(100) NOT NULL,
+`Median_sales_price` varchar(100) NOT NULL,
+`Price_sqft` varchar(100) NOT NULL
+
+);")
+
+
+```
+
+
 #### Model the Data
 
 ```{r}
 #  Correlation matrix
-nyc_full$X<-NULL
-m<-cor(subset(nyc_full, select=-c(zip)))
-corrplot(m, type="upper", order="hclust", t1.col="black",t1.srt=45)
+#nyc_full$X <- NULL
+#m<-cor(subset(nyc_full, select=-c(zip)))
+#corrplot(m, type="upper", order="hclust", t1.col="black",t1.srt=45)
 
 # Scatterplot with regression line
 ggplot(nyc_full,aes(y = Price_sqft, x = freq_violent_crime)) +
