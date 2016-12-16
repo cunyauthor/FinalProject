@@ -30,8 +30,8 @@ Property sales data from August to November 2016 were scraped from the real esta
 #### Obtain the data
 
 ```{r}
-library(dplyr)
 library(plyr)
+library(dplyr)
 library(corrplot)
 library(ggmap)
 ```
@@ -181,7 +181,8 @@ zip_neig<-read.csv(url(urlfile), encoding="UTF-8", na.strings=c("","NA"), string
  
 #joint crime data with borough and neighborhood
  zip_neig$zip<-as.character(zip_neig$zip)
-left_join(nyc_s12,zip_neig, "zip")
+nyc_s12<-left_join(nyc_s12,zip_neig, "zip")
+head(nyc_s12)
 #END NEW DATA
 
 # Statistics summary of NYC prices
