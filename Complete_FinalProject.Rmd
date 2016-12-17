@@ -232,77 +232,63 @@ dbSendQuery(connection, 'Drop Table If Exists nyc_s2;')
 dbSendQuery(connection, 'Drop Table If Exists trulia;')
 dbSendQuery(connection, 'Drop Table If Exists zip_pop;')
 
+urlfile<-"https://raw.githubusercontent.com/cunyauthor/FinalProject/master/nyc_15.csv"
+nyc_1<-read.csv(url(urlfile), encoding="latin1", na.strings=c("","NA"), stringsAsFactors = F)
 
-dbWriteTable(connection, "tbl_LinkedIn", JA_Data, append = TRUE, row.names = FALSE)
-nyc1 <- dbSendQuery(connection," CREATE TABLE nyc_1
-(
-`RPT_DT` varchar(100) NOT NULL,
-`OFNS_DESC` varchar(100) NOT NULL,
-`LAW_CAT_CD` varchar(100) NOT NULL,
-`BORO_NM` varchar(100) NOT NULL,
-`ADDR_PCT_CD` varchar(100) NOT NULL,
-`Latitude` varchar(100) NOT NULL,
-`Longitude` varchar(100) NOT NULL,
-`Lat_Lon` varchar(100) NOT NULL,
-`id` varchar(100) NOT NULL,
-`address` varchar(200) NOT NULL,
-`street_number` varchar(100) NOT NULL,
-`route` varchar(100) NOT NULL,
-`neighborhood` varchar(100) NOT NULL,
-`political` varchar(100) NOT NULL,
-`administrative_area_level_2` varchar(100) NOT NULL,
-`administrative_area_level_1` varchar(100) NOT NULL,
-`country` varchar(100) NOT NULL,
-`postal_code` varchar(100) NOT NULL,
-`postal_code_suffix` varchar(100) NOT NULL,
-`locality` varchar(100) NOT NULL,
-`premise` varchar(100) NOT NULL,
-`crime_v` varchar(100) NOT NULL
+dbWriteTable(connection, "tbl_nyc1", nyc_1, append = TRUE, row.names = FALSE)
+dbSendQuery(connection, "ALTER TABLE tbl_nyc1
+            MODIFY COLUMN id varchar(100) NOT NULL,            
+            MODIFY COLUMN RPT_DT varchar(100) NOT NULL,
+            MODIFY COLUMN OFNS_DESC varchar(100) NOT NULL,
+            MODIFY COLUMN BORO_NM varchar(100) NOT NULL,
+            MODIFY COLUMN ADDR_PCT_CD varchar(100) NULL,
+            MODIFY COLUMN Latitude varchar(100) NULL,
+            MODIFY COLUMN Longitude varchar(100) NULL,
+            MODIFY COLUMN Lat_Lon varchar(100) NULL,
+            MODIFY COLUMN address varchar(200) NULL,
+            MODIFY COLUMN street_number varchar(100) NULL,
+            MODIFY COLUMN route varchar(100) NULL,
+            MODIFY COLUMN neighborhood varchar(100) NULL,
+            MODIFY COLUMN political varchar(100) NULL,
+            MODIFY COLUMN administrative_area_level_2 varchar(100) NULL,
+            MODIFY COLUMN administrative_area_level_1 varchar(100) NULL,
+            MODIFY COLUMN country varchar(100) NULL,
+            MODIFY COLUMN postal_code varchar(100) NULL,
+            MODIFY COLUMN postal_code_suffix varchar(100) NULL,
+            MODIFY COLUMN locality varchar(100) NULL,
+            MODIFY COLUMN premise varchar(100) NULL,
+            MODIFY COLUMN crime_v varchar(100) NULL
+            ;")
 
-);")
+urlfile<-"https://raw.githubusercontent.com/cunyauthor/FinalProject/master/pop_zip_census.csv"
+zip_pop<-read.csv(url(urlfile), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
+colnames(zip_pop) <- c("zip","pop")# rename variables
+dbWriteTable(connection, "tbl_zip_pop", zip_pop, append = TRUE, row.names = FALSE)
+dbSendQuery(connection, "ALTER TABLE tbl_zip_pop
+            MODIFY COLUMN zip varchar(10) NOT NULL,
+            MODIFY COLUMN pop varchar(50) NOT NULL
+            ;")
 
-nycFull <- dbSendQuery(connection, "CREATE TABLE nyc_full
-(
-`zip` varchar(100) NOT NULL,
-`Median_sales_price` varchar(100) NOT NULL,
-`Price_sqft` varchar(100) NOT NULL,
-`freq_crime` varchar(100) NOT NULL,
-`freq_violent_crime` varchar(100) NOT NULL,
-`pop` varchar(100) NOT NULL,
-`crime_rate` varchar(100) NOT NULL,
-`v_crime_rate` varchar(100) NOT NULL
-);")
+urlfile<-"https://raw.githubusercontent.com/cunyauthor/FinalProject/master/zip_neig.csv"
+zip_neig<-read.csv(url(urlfile), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
 
-nycs1 <- dbSendQuery(connection, "CREATE TABLE nyc_s1
-(
-`zip` varchar(100) NOT NULL,
-`freq_crime` varchar(100) NOT NULL
+dbWriteTable(connection, "tbl_zip_neig", zip_neig, append = TRUE, row.names = FALSE)
+dbSendQuery(connection, "ALTER TABLE tbl_zip_neig
+            MODIFY COLUMN Borough varchar(100) NOT NULL,
+            MODIFY COLUMN Neighborhood varchar(100) NOT NULL,
+            MODIFY COLUMN zip varchar(10) NOT NULL
+            ;")
 
-);")
+urlfile<-"https://raw.githubusercontent.com/cunyauthor/FinalProject/master/trulia_sqft.csv"
+trulia<-read.csv(url(urlfile), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
 
-nycs12 <- dbSendQuery(connection, "CREATE TABLE nyc_s12
-(
-`zip` varchar(100) NOT NULL,
-`freq_crime` varchar(100) NOT NULL,
-`freq_violent_crime` varchar(100) NOT NULL
-
-);")
-
-nycs2 <- dbSendQuery(connection, "CREATE TABLE nyc_s2
-(
-`zip` varchar(100) NOT NULL,
-`freq_violent_crime` varchar(100) NOT NULL
-
-);")
-
-truliaSQL <- dbSendQuery(connection, "CREATE TABLE trulia
-(
-`X` varchar(100) NOT NULL,
-`zip` varchar(100) NOT NULL,
-`Median_sales_price` varchar(100) NOT NULL,
-`Price_sqft` varchar(100) NOT NULL
-
-);")
+dbWriteTable(connection, "tbl_trulia", trulia, append = TRUE, row.names = FALSE)
+dbSendQuery(connection, "ALTER TABLE tbl_trulia
+            MODIFY COLUMN x varchar(10) NOT NULL,
+            MODIFY COLUMN zip varchar(10) NOT NULL,
+            MODIFY COLUMN Median_sales_price varchar(50) NOT NULL,
+            MODIFY COLUMN Price_sqft varchar(50) NOT NULL
+            ;")
 
 ```
 
@@ -337,12 +323,17 @@ and violent crimes.
 
 Our regression analysis shows for every violent crime the sales price per square foot drops by $32.90. The amount in price per square foot drops can vary by $11.20. There is a relationship between sales price per square foot and violent crime in New York City. Thus we reject the null hypothesis.
 
-```{r}
-<iframe 
-src="https://public.tableau.com/profile/ka.man.chan#!/"
-width="650" height="1100">
-</iframe>
-    
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r tableau}
+```
+<iframe src="https://public.tableau.com/profile/ka.man.chan#!/"
+ width="650" height="1100">
+ </iframe>
 ```
 
 
@@ -363,4 +354,9 @@ https://www.health.ny.gov/statistics/cancer/registry/appendix/neighborhoods.htm
  
 **Violent crime definition**
 https://en.wikipedia.org/wiki/Violent_crime
+   
+**Google API**
+https://developers.google.com/maps/pricing-and-plans/
+ 
+**R ggmap (Google maps) package**                                https://cran.r-project.org/web/packages/ggmap/ggmap.pdf
  
