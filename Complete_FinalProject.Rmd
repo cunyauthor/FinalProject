@@ -2,7 +2,7 @@
 title: "Final Project IS607"
 author: "Marco Siqueira Campos, KaMan Chan, Sharon Morris, Talha Muhammad"
 date: "12/18/2016"
-output: pdf_document
+output: html_document
 ---
 
 # Introduction
@@ -34,6 +34,7 @@ library(dplyr)
 library(plyr)
 library(corrplot)
 library(ggmap)
+library(RMySQL)
 ```
 
 
@@ -218,9 +219,7 @@ nyc_full$v_crime_rate<-(nyc_full$freq_violent_crime/nyc_full$pop)*100000 * 45855
 
 ```{r}
 # Database schema
-library(RMySQL)
-
-#source(logincredentiasl.R)
+source("logincredentiasl.R")
 connection <- dbConnect(MySQL(), user=MySQL_Username, password=MySQL_Password)
 
 dbSendQuery(connection, 'CREATE SCHEMA IF NOT EXISTS SYS;')
@@ -234,6 +233,7 @@ dbSendQuery(connection, 'Drop Table If Exists trulia;')
 dbSendQuery(connection, 'Drop Table If Exists zip_pop;')
 
 
+dbWriteTable(connection, "tbl_LinkedIn", JA_Data, append = TRUE, row.names = FALSE)
 nyc1 <- dbSendQuery(connection," CREATE TABLE nyc_1
 (
 `RPT_DT` varchar(100) NOT NULL,
@@ -304,7 +304,6 @@ truliaSQL <- dbSendQuery(connection, "CREATE TABLE trulia
 
 );")
 
-
 ```
 
 
@@ -337,3 +336,31 @@ The scatter plot shows there is not a strong a relationship between price per sq
 and violent crimes. 
 
 Our regression analysis shows for every violent crime the sales price per square foot drops by $32.90. The amount in price per square foot drops can vary by $11.20. There is a relationship between sales price per square foot and violent crime in New York City. Thus we reject the null hypothesis.
+
+```{r}
+<iframe 
+src="https://public.tableau.com/profile/ka.man.chan#!/"
+width="650" height="1100">
+</iframe>
+    
+```
+
+
+#### References
+The definition for violent crime was created using two existing standards NCVS [Bureau of Justice Statistics National Crime Victimization Survey](https://www.bjs.gov/index.cfm?ty=dcdetail&iid=245) and the UCR [Federal Bureau of Investigation's Uniform Crime Report](https://ucr.fbi.gov)
+
+**Trulia real state**
+https://www.trulia.com/home_prices/New_York/New_York-heat_map/city_by_neighborhood/ALP/nh/
+ 
+**NYC Opendata – City crime data**
+https://data.cityofnewyork.us/Public-Safety/Historical-New-York-City-Crime-Data/hqhv-9zeg
+ 
+**US Census 2010**
+http://www.census.gov/2010census/data/
+ 
+**New York State**
+https://www.health.ny.gov/statistics/cancer/registry/appendix/neighborhoods.htm
+ 
+**Violent crime definition**
+https://en.wikipedia.org/wiki/Violent_crime
+ 
