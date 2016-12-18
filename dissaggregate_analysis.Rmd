@@ -15,19 +15,29 @@ library(ggplot2)
 library(geosphere)
 ```
 
+```{r ids and pwds}
+#zillowid=option("insert your zillowapi credentials")
+```
+# Goals and Aims
+In addition to the aggregate analysis (focusing on median prices at the zip code level), we wanted to understand the impact of crime and other attibutes on property values(number of bedrooms, bathrooms, distance from the Central Business District and "neigbhorhood premium") at a disaggregate level. Due to Zillow API call limits and time the analysis focused on Northwest and Central Brooklyn, in New York City - however the approach is very general and can easily be extended to other areas of Brooklyn and even New York City. 
+
 
 # Phase I: Getting the data
-The data is collected from different sources. 
+The data is collected from different sources.   
+1. Planning data from Pluto for Addresses (input to Zillow) 
+2. Real Estate data from Zillow (using Zillow's deepsearch API)    
+3. Crime data from NYPD 
 
 
-###Planning database
-Pluto data from NYC planning department is used to provide addresses to get the latest data from Zillow (source:http://www1.nyc.gov/site/planning/data-maps/open-data/dwn-pluto-mappluto.page). Addresses obtained are then 
+### i) Planning database
+Pluto data from NYC planning department is used to provide addresses to get the latest data from Zillow (source:http://www1.nyc.gov/site/planning/data-maps/open-data/dwn-pluto-mappluto.page). Addresses obtained are then used to make call from the Zillow API.    
+The code below identifies how these addresses were selected - primarily using building codes. Since the zillow API places a constraint of 1000 calls per day and due to limited time, the analysis 
 
 
 ```{r Identify Addresses}
 path='C:/Users/talha/Documents/Training/CUNY Classes/IS607/Final/nyc_pluto_16v2/BORO_zip_files_csv'
 #source pluto database from NYC
- 
+https://raw.githubusercontent.com/cunyauthor/FinalProject/master/BK.csv 
 plutodata<-read.csv(file.path(path,"BK.csv"))
 
 #focus analysis on certain zip codes
@@ -74,8 +84,11 @@ finaldata %>% count(ZipCode)
 finaldata %>% count(BldgClass)
 ```
 
-## Use Planning addresses to Make API Calls to Zillow
-
+### ii) Zillow Data
+Addresses from the New York City Pluto database are used to make API calls to Zillow. Addresses are a required input to the Zillow API. As part of the analysis we define three functions to collect data from Zillow.The code was modified and adapted (signficantly) from the following stackoverflow source (http://stackoverflow.com/questions/17349630/r-dataframe-from-xml-when-values-are-multiple-or-missing).       
+The **zillowcaller** function takes in as inputs addresses in zillow api call form, zip codes and the number of calls to make and the starting number of the call. The  **zillowfunction** function takes as input the parsed XML from the API and then selects various attributes from the XML nodes. Finally the **zillowaggregator** combined all the attributes into a single dataframe.              
+We use the **GetDeepSearch** API from zillow for this analysis.      
+    
 ```{r Prepare for Zillow}
 #select all the addresses
 address<-finaldata$Address
@@ -103,10 +116,8 @@ for (i in 1:nos) {
   return(last)
 }
 
-#inspiration for zillow function code
-#http://stackoverflow.com/questions/17349630/r-dataframe-from-xml-when-values-are-multiple-or-missing
 
-# define zillow function to parse and classify zillow api calls
+# define zillow function to parse and extract relevant attributes from zillow api calls
 zillowfunction<-function(xmldata){
 do.call(rbind, xpathApply(xmldata, "//result", function(node) {
 
@@ -144,24 +155,26 @@ else {
 
 ```
 
+We make the zillow api calls below to collect the data. However, due to call limits we have already collected the data and stored on github for this analysis.      
+
 ```{r make Zillow calls}
 #return a list of calls to api
 #daily limit of 1000 calls  
-firstcall<-zillowcaller(address,citystate,40,0,zillow_url)
-zillowdata<-zillowaggregator(firstcall)
-secondcall<-zillowcaller(address,citystate,980,40,zillow_url)
-two<-zillowaggregator(secondcall)
-thirdcall<-zillowcaller(address,citystate,972,1020,zillow_url)
-three<-zillowaggregator(thirdcall)
-zillowdata<-rbind(zillowdata,three,two)
-a<-getURL("https://github.com/cunyauthor/FinalProject/zillowdata.csv")
-a<-getURL("https://raw.githubusercontent.com/cunyauthor/FinalProject/master/zillowdata.csv")
-urlfile<-"https://github.com/cunyauthor/FinalProject/master/zillowdata.csv"
-a<-read.csv(getURL(urlfile), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
-x <- getURL(urlfile)
-y <- read.csv(a,header=TRUE,sep="",stringsAsFactors = FALSE)
-y<-read.csv(text=a,stringsAsFactors = FALSE)
+#calls were make over 2 days to meet the limits
+
+#firstcall<-zillowcaller(address,citystate,40,0,zillow_url)
+#zillowdata<-zillowaggregator(firstcall)
+#secondcall<-zillowcaller(address,citystate,980,40,zillow_url)
+#two<-zillowaggregator(secondcall)
+#thirdcall<-zillowcaller(address,citystate,972,1020,zillow_url)
+#three<-zillowaggregator(thirdcall)
+#zillowdata<-rbind(zillowdata,three,two)
+
+#read in the precollected data from github
+zillowdata<-read.csv(text=getURL("https://raw.githubusercontent.com/cunyauthor/FinalProject/master/zillowdata.csv"),stringsAsFactors = FALSE)
+zillowdata<-rename(zillowdata,number=X)
 ```
+# Phase II: Cleaning the data
 
 ```{r Clean Zillow Data}
 zillowdata$zpid<-as.numeric(zillowdata$zpid)
@@ -193,6 +206,8 @@ zillow_clean<-zillow_clean[!(zillow_clean$nb %in% neighborhoods),]
 
 ```
 
+### Calculating Distance
+Property prices have a distance and accessibility premium. Residential 
 ```{r Distance}
 # Identify a point in Manhattan
 #location refers to mid-town Manhattan
@@ -208,6 +223,8 @@ zillow_clean$distance <- distGeo(zillow_clean[,c('long','lat')], zillow_clean[,c
 #convert distance to miles from meters
 zillow_clean$distance<-zillow_clean$distance*0.000621371
 ```
+
+### Conducting some plots and visualizations
 
 ```{r Data Visualizations}
 #plot of the valuation data
