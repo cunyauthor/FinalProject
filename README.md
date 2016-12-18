@@ -7,4 +7,5 @@
 
 ## Data Sources
 
-### nyc_15.csv     NYC DATAOPEN  NYCPD crime data
+### nyc_15.csv                       NYC DATAOPEN  NYCPD crime data
+### trulia.csv                       Trulia real state prices
