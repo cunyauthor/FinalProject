@@ -3,15 +3,13 @@ title: "Final Project IS607"
 author: "Marco Siqueira Campos, KaMan Chan, Sharon Morris, Talha Muhammad"
 date: "12/18/2016"
 output: html_document
+
 ---
 
 # Introduction
 This is the final project for IS607 Data Acquisition and Management class in the M.S. of Data Analytics program at The City University of New York. 
 
 This is an observational study. 
-
-$H_0 :p =0.50$ (There is no relationship between property values and crime)
-$H_a :p >0.50$ (There is a relationship between property values and crime)
 
 ## Motivation
 The motivation of this project is to understand the relationship between crime and property values in New York City. The majority of the project team are New York City residents and this is of interest.
@@ -29,7 +27,7 @@ Property sales data from August to November 2016 were scraped from the real esta
 
 #### Obtain the data
 
-```{r}
+```{r message=FALSE}
 library(dplyr)
 library(plyr)
 library(corrplot)
@@ -38,41 +36,43 @@ library(RMySQL)
 ```
 
 
-```{r}
-#temp <- tempfile()
-#download.file("https://raw.githubusercontent.com/cunyauthor/FinalProject/master/NYPD_Complaint_Data_Historic.zip",temp)
-#NYPD <- read.csv(unz(temp, "NYPD_Complaint_Data_Historic.csv"), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
-#unlink(temp)
+```{r eval=FALSE}
+temp <- tempfile()
+download.file("https://raw.githubusercontent.com/cunyauthor/FinalProject/master/NYPD_Complaint_Data_Historic.zip",temp)
+NYPD <- read.csv(unz(temp, "NYPD_Complaint_Data_Historic.csv"), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
+unlink(temp)
 
-#str(NYPD)
-#head(NYPD)
+str(NYPD)
+head(NYPD)
 ```
 
 
 #### Scrub and explore the data
 
-A subset of the crime data was created with only variables required for the analysis. All missing data were removed from the dataset, the resulting dataset contained 100,000+ cases. 
+A subset of the crime data was created with only variables required for the analysis. All missing data were removed from the dataset, the resulting dataset contained 4500,000+ cases.
 
-The resulting dataset was randomized to create to create a sample of 11,700 cases. The sample was broken into 5 smaller samples in order to add Google API to match longitude and latitude in the data to street addresses. Google API allowed 2,500 free downloads per 24 hour period.
+A random sample was taken to create a sample of 11,700 cases. The sample was broken into 5 smaller samples in order to add Google API to match longitude and latitude in the data to street addresses. Google API allowed 2,500 free downloads per 24 hour period.
 
-An index was created to categorize crime and applied. The crime dataset and data from Trulia were joined into one dataset for analysis.
+We had a challenge here as there is no single standard defining of violent crime, there are two standards, NCVS [Bureau of Justice Statistics National Crime Victimization Survey](https://www.bjs.gov/index.cfm?ty=dcdetail&iid=245) and the UCR [Federal Bureau of Investigation's Uniform Crime Report](https://ucr.fbi.gov) and they were not fully compatible with the description of the NYC PD. 
 
-```{r}
-#class(NYPD) #view class
-#dim(NYPD)   #view dimensions
-#names(NYPD) #explore the column names
-#unstand the structure
-#str(NYPD)  
+To solve this we create our own definition of violent crime, we filter from the main the follow crime categories: DANGEROUS WEAPONS,FELONY ASSAULT,KIDNAPPING & RELATED OFFENSES,MURDER & NON-NEGL. MANSLAUGHTER,ROBBERY and SEX CRIMES.
 
-#new <- select(NYPD, RPT_DT, OFNS_DESC, OFNS_DESC, LAW_CAT_CD, BORO_NM, ADDR_PCT_CD,
-              #Latitude, Longitude, Lat_Lon) # data with required variables
+```{r eval=FALSE}
+class(NYPD) #view class
+dim(NYPD)   #view dimensions
+names(NYPD) #explore the column names
+unstand the structure
+str(NYPD)  
 
-#sapply(new, function(x) sum(is.na(x))) # review NAs in the data
-#noNas <- na.omit(new) # remove NAs from data
-#sapply(noNas, function(x) sum(is.na(x)))
-#glimpse(noNas) #look at the data
+new <- select(NYPD, RPT_DT, OFNS_DESC, OFNS_DESC, LAW_CAT_CD, BORO_NM, ADDR_PCT_CD,
+              Latitude, Longitude, Lat_Lon) # data with required variables
 
-#summary(noNas) #summarize the data
+sapply(new, function(x) sum(is.na(x))) # review NAs in the data
+noNas <- na.omit(new) # remove NAs from data
+sapply(noNas, function(x) sum(is.na(x)))
+glimpse(noNas) #look at the data
+
+summary(noNas) #summarize the data
 ```
 
 
@@ -152,7 +152,6 @@ nyc_1$postal_code<-as.character(nyc_1$postal_code)
 # create new column for violent crime 
 index<-c("DANGEROUS WEAPONS","FELONY ASSAULT","KIDNAPPING & RELATED OFFENSES","MURDER & NON-NEGL. MANSLAUGHTER","ROBBERY","SEX CRIMES")
 nyc_1$crime_v<-index[(match(nyc_1$OFNS_DESC,index))]
-
 nyc_1$crime_v<-as.factor(nyc_1$crime_v)
 
 # agrregate the crime data by zip code
@@ -164,18 +163,20 @@ colnames(nyc_s2) <- c("zip","freq_violent_crime")
 
 # joint two tables of crime data
 nyc_s12<-left_join(nyc_s1, nyc_s2, "zip")
-
 # change NA for zero 
 nyc_s12[is.na(nyc_s12)]<-0
-
 # Crime table
 head(nyc_s12)
+#crime summary
+summary(nyc_s12$freq_crime)
+sd(nyc_s12$freq_crime)
+summary(nyc_s12$freq_violent_crime)
+sd(nyc_s12$freq_violent_crime)
 
 # Read data from real state 
 urlfile<-"https://raw.githubusercontent.com/cunyauthor/FinalProject/master/trulia_sqft.csv"
 trulia<-read.csv(url(urlfile), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
 
-##NEW CODE
 # Read the table
 urlfile<-"https://raw.githubusercontent.com/cunyauthor/FinalProject/master/zip_neig.csv"
 zip_neig<-read.csv(url(urlfile), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
@@ -184,18 +185,14 @@ zip_neig<-read.csv(url(urlfile), encoding="UTF-8", na.strings=c("","NA"), string
  zip_neig$zip<-as.character(zip_neig$zip)
 nyc_s12<-left_join(nyc_s12,zip_neig, "zip")
 head(nyc_s12)
-#END NEW DATA
 
 # Statistics summary of NYC prices
 summary(trulia$Median_sales_price)
 summary(trulia$Price_sqft)
-
 # Trulia table price by zip
 head(trulia)
-
 # Change zip to as.character
 trulia$zip<-as.character(trulia$zip)
-
 # Join the two tables
 nyc_full<-inner_join(trulia,nyc_s12, "zip")
 head(nyc_full)
@@ -217,7 +214,8 @@ nyc_full$v_crime_rate<-(nyc_full$freq_violent_crime/nyc_full$pop)*100000 * 45855
 ```
 
 
-```{r}
+
+```{r warning=FALSE, message=FALSE}
 # Database schema
 source("logincredentiasl.R")
 connection <- dbConnect(MySQL(), user=MySQL_Username, password=MySQL_Password)
@@ -290,16 +288,31 @@ dbSendQuery(connection, "ALTER TABLE tbl_trulia
             MODIFY COLUMN Price_sqft varchar(50) NOT NULL
             ;")
 
+dbSendQuery(connection, 'DROP TABLE IF EXISTS nyc_1;')
+dbSendQuery(connection, 'Drop Table If Exists nyc_full;')
+dbSendQuery(connection, 'Drop Table If Exists nyc_s1;')
+dbSendQuery(connection, 'Drop Table If Exists nyc_s12;')
+dbSendQuery(connection, 'Drop Table If Exists nyc_s2;')
+dbSendQuery(connection, 'Drop Table If Exists trulia;')
+dbSendQuery(connection, 'Drop Table If Exists zip_pop;')
+dbDisconnect(connection)
 ```
 
 
 #### Model the Data
 
 ```{r}
-#  Correlation matrix
-#nyc_full$X <- NULL
-#m<-cor(subset(nyc_full, select=-c(zip)))
-#corrplot(m, type="upper", order="hclust", t1.col="black",t1.srt=45)
+#Correlation matrix
+nyc_full$X <- NULL
+m<-cor(subset(nyc_full, select=-c(zip,Borough,Neighborhood)))
+corrplot(m, type="upper", order="hclust", t1.col="black",t1.srt=45)
+
+nyc_full$X <- NULL
+m1<- subset(nyc_full, select=-c(zip,Borough,Neighborhood))
+colnames(m1)<-c("median crime", "price sqr/ft", "count crime", "count violent crime",
+                 "population", "crime rate", "violent crime rate") 
+m<-cor(m1)
+corrplot(m, type="upper", order="hclust", t1.col="black",t1.srt=45)
 
 # Scatterplot with regression line
 ggplot(nyc_full,aes(y = Price_sqft, x = freq_violent_crime)) +
@@ -316,12 +329,30 @@ summary(lmt)
 
 ```
 
+
 #### Findings and Conclusion
 
-The scatter plot shows there is not a strong a relationship between price per square
-and violent crimes. 
+##### Summary Analysis
+All data was join by ZIP code, ZIP was the better standard to connect all data base, we try by neighborhood but each source had its own definition, so we abandoned.
+We aggregate all data by ZIP code.
 
-Our regression analysis shows for every violent crime the sales price per square foot drops by $32.90. The amount in price per square foot drops can vary by $11.20. There is a relationship between sales price per square foot and violent crime in New York City. Thus we reject the null hypothesis.
+There are differences between the full sales price among zip codes. The median sales price is different from mean, in some zipcode there is big change in the mean. The best central tendency here is median, which better reflect the reality.”
+
+The price per square/foot is more stable with lower difference between media and median, here mean can be adopted”.
+ 
+ In our analysis we focus in the price per square/foot this better to do comparison, remove the size, in the value”
+
+In the crime data by zip there are large variability, for both crimes. The variability illustrates some areas are more violent than others. 
+
+The times series plot by crime (See charts Tableau Public.)  The mosaic plot shows, petit larceny is the most frequent, followed by harassment during the summer months so do overall crime rates.
+
+##### Correlation Matrix Plot
+The price square/foot has negative relationship with violent crime. The common crime don’t have relationship with price square/foot or median sales price. The price square/foot don’t have relationship with crime rate (crime/population).
+
+##### Regression Analysis
+There is negative relationship between violent crime and price square/foot, for each occurrence of violent crime the price drops US$ 32.90, at 0.05 significant level. There is a ($500) mean drop in price between areas with the most or least violent crimes. The crime frequency explain 17% of property value.
+
+There is no relationship with price and crime rate or violent crime rate, this is an interesting finding, for people interested in how the crime impacts price. Is not taken into account in the number of people (population). This can lead to an incorrect crime perception.
 
 
 ```{r setup, include=FALSE}
@@ -340,23 +371,23 @@ knitr::opts_chunk$set(echo = TRUE)
 #### References
 The definition for violent crime was created using two existing standards NCVS [Bureau of Justice Statistics National Crime Victimization Survey](https://www.bjs.gov/index.cfm?ty=dcdetail&iid=245) and the UCR [Federal Bureau of Investigation's Uniform Crime Report](https://ucr.fbi.gov)
 
-**Trulia real state**
+**1. Trulia real state**
 https://www.trulia.com/home_prices/New_York/New_York-heat_map/city_by_neighborhood/ALP/nh/
  
-**NYC Opendata – City crime data**
+**2. NYC Opendata – City crime data**
 https://data.cityofnewyork.us/Public-Safety/Historical-New-York-City-Crime-Data/hqhv-9zeg
  
-**US Census 2010**
+**3. US Census 2010**
 http://www.census.gov/2010census/data/
  
-**New York State**
+**4. New York State**
 https://www.health.ny.gov/statistics/cancer/registry/appendix/neighborhoods.htm
  
-**Violent crime definition**
+**5. Violent crime definition**
 https://en.wikipedia.org/wiki/Violent_crime
    
-**Google API**
+**6. Google API**
 https://developers.google.com/maps/pricing-and-plans/
  
-**R ggmap (Google maps) package**                                https://cran.r-project.org/web/packages/ggmap/ggmap.pdf
+**7. R ggmap (Google maps) package**                                https://cran.r-project.org/web/packages/ggmap/ggmap.pdf
  
