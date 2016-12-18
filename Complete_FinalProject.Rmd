@@ -24,7 +24,6 @@ Each row represents a complaint reported to NYPD. Only valid complaints are incl
 
 Property sales data from August to November 2016 were scraped from the real estate listing site Trulia. 
 
-
 #### Obtain the data
 
 ```{r message=FALSE}
@@ -150,6 +149,7 @@ nyc_1<-read.csv(url(urlfile), encoding="UTF-8", na.strings=c("","NA"), stringsAs
 nyc_1$postal_code<-as.character(nyc_1$postal_code)
 
 # create new column for violent crime 
+nyc_1<-nyc_1[-10639,]
 index<-c("DANGEROUS WEAPONS","FELONY ASSAULT","KIDNAPPING & RELATED OFFENSES","MURDER & NON-NEGL. MANSLAUGHTER","ROBBERY","SEX CRIMES")
 nyc_1$crime_v<-index[(match(nyc_1$OFNS_DESC,index))]
 nyc_1$crime_v<-as.factor(nyc_1$crime_v)
@@ -301,12 +301,8 @@ dbDisconnect(connection)
 
 #### Model the Data
 
-```{r}
+```{r warning=FALSE, message=FALSE}
 #Correlation matrix
-nyc_full$X <- NULL
-m<-cor(subset(nyc_full, select=-c(zip,Borough,Neighborhood)))
-corrplot(m, type="upper", order="hclust", t1.col="black",t1.srt=45)
-
 nyc_full$X <- NULL
 m1<- subset(nyc_full, select=-c(zip,Borough,Neighborhood))
 colnames(m1)<-c("median crime", "price sqr/ft", "count crime", "count violent crime",
