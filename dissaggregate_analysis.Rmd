@@ -35,10 +35,8 @@ The code below identifies how these addresses were selected - primarily using bu
 
 
 ```{r Identify Addresses}
-path='C:/Users/talha/Documents/Training/CUNY Classes/IS607/Final/nyc_pluto_16v2/BORO_zip_files_csv'
 #source pluto database from NYC
-https://raw.githubusercontent.com/cunyauthor/FinalProject/master/BK.csv 
-plutodata<-read.csv(file.path(path,"BK.csv"))
+plutodata<-read.csv(text=getURL("https://raw.githubusercontent.com/cunyauthor/FinalProject/master/BK.csv"),header=TRUE,stringsAsFactors=FALSE) 
 
 #focus analysis on certain zip codes
 #central brooklyn, northwest brooklyn and greenpoint
@@ -160,7 +158,8 @@ We make the zillow api calls below to collect the data. However, due to call lim
 ```{r make Zillow calls}
 #return a list of calls to api
 #daily limit of 1000 calls  
-#calls were make over 2 days to meet the limits
+
+#calls were made over 2 days to meet the limits
 
 #firstcall<-zillowcaller(address,citystate,40,0,zillow_url)
 #zillowdata<-zillowaggregator(firstcall)
@@ -182,8 +181,8 @@ zillowdata$nbid<-as.numeric(zillowdata$nbid)
 zillowdata$valuation<-as.numeric(zillowdata$valuation)
 zillowdata$lowval<-as.numeric(zillowdata$lowval)
 zillowdata$highval<-as.numeric(zillowdata$highval)
-zillowdata$bedrooms<-as.factor(zillowdata$bedrooms)
-zillowdata$bathrooms<-as.factor(zillowdata$bathrooms)
+zillowdata$bedrooms<-as.integer(zillowdata$bedrooms)
+zillowdata$bathrooms<-as.numeric(zillowdata$bathrooms)
 zillowdata$sqft<-as.numeric(zillowdata$sqft)
 str(zillowdata)
 head(zillowdata)
@@ -192,9 +191,6 @@ head(zillowdata)
 zillowdata<-zillowdata[(zillowdata$zpid %in% unique(zillowdata$zpid)),]
 ##select data where valuation and bedrooms are non-missing
 zillow_clean<-zillowdata[!is.na(zillowdata$bedrooms)&!is.na(zillowdata$valuation),]
-zillow_clean %>% count(nb) %>% arrange(n)
-zillow_clean %>% count(bedrooms)
-zillow_clean %>% count(bathrooms)
 #remove homes greater than 5 bedrooms
 zillow_clean<-filter(zillow_clean,bedrooms<=5)
 # remove homes greater $10 million
@@ -203,11 +199,11 @@ zillow_clean<-filter(zillow_clean,valuation<=10000000)
 neighborhoods<-c("Canarsie","Williamsburg","Ocean Hill","Brownsville","Chelsea","Vinegar Hill","Garment District","Greenwood","Red Hook","Wingate")
 
 zillow_clean<-zillow_clean[!(zillow_clean$nb %in% neighborhoods),]
-
 ```
 
+
 ### Calculating Distance
-Property prices have a distance and accessibility premium. Residential 
+Property prices have a distance and accessibility premium. Residential properties 
 ```{r Distance}
 # Identify a point in Manhattan
 #location refers to mid-town Manhattan
@@ -224,9 +220,22 @@ zillow_clean$distance <- distGeo(zillow_clean[,c('long','lat')], zillow_clean[,c
 zillow_clean$distance<-zillow_clean$distance*0.000621371
 ```
 
-### Conducting some plots and visualizations
+### Summary statistics
+      
+Summary statistics from the data. 
+```{r summary statistics}
+zillow_clean %>% count(nb) %>% arrange(desc(n))
+zillow_clean %>% count(bedrooms)
+zillow_clean %>% count(bathrooms)%>% arrange(desc(n))
+summarize(group_by(zillow_clean,nb),med=median(valuation),avg=mean(valuation))%>% arrange(desc(med))
+summarize(group_by(zillow_clean,bedrooms),med=median(valuation),avg=mean(valuation))%>% arrange(desc(med))
+```
 
-```{r Data Visualizations}
+
+
+### Conducting some plots and visualizations
+The visualizations below show the valuation of the properties. Valuations show a very long tail and is similar to a log normal distribution
+```{r Data Visualizations1}
 #plot of the valuation data
 plot<-ggplot(data=zillow_clean,aes(x=valuation))
 plot+geom_histogram(fill="blue",binwidth = 100000)+ggtitle("Zillow House Prices")
@@ -234,7 +243,12 @@ plot_lo<-ggplot(data=zillow_clean,aes(x=lowval))
 plot_lo+geom_histogram(fill="orange",binwidth = 100000)+ggtitle("Zillow House Prices- Low Estimate")+xlab("Low Valuation")
 plot_hi<-ggplot(data=zillow_clean,aes(x=highval))
 plot_hi+geom_histogram(fill="darkgreen",binwidth = 100000)+ggtitle("Zillow House Prices- High Estimate")+xlab("High Valuation")
+```
 
+```{r Data Visualizations2}
+#convert to factor
+zillow_clean$bedrooms<-as.factor(zillow_clean$bedrooms)
+zillow_clean$bathrooms<-as.factor(zillow_clean$bathrooms)
 #plot of square feet and valuation
 plot<-ggplot(data=zillow_clean[zillow_clean$sqft<10000&!is.na(zillow_clean$sqft),],aes(x=sqft, y=valuation))
 plot+geom_point(aes(color=bedrooms))+ggtitle("Valuations vs Sq.Ft")+ylab("Property Value in $")+scale_y_continuous(breaks=seq(0,10000000,2000000))
