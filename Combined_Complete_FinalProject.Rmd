@@ -1,0 +1,637 @@
+---
+title: "Final Project IS607"
+author: "Marco Siqueira Campos, KaMan Chan, Sharon Morris, Talha Muhammad"
+date: "12/18/2016"
+output: html_document
+---
+
+# Introduction
+This is the final project for IS607 Data Acquisition and Management class in the M.S. of Data Analytics program at The City University of New York. 
+
+This is an observational study. 
+
+## Motivation
+The motivation of this project is to understand the relationship between crime and property values in New York City. The majority of the project team are New York City residents and this is of interest.
+
+The results of this study could be useful to those interested in purchasing real estate in New York City.
+
+## The Data
+The data were obtained from two sources. Crime data were collected from New York City Police Department complaint data. The crime dataset includes all valid felony, misdemeanor, and violation crimes reported to the New York City Police Department (NYPD) during 2015. These data represent criminal offenses according to New York State Penal Law definitions, not FBI Uniform Crime Report definitions, and are therefore not comparable to UCR reported crime.
+
+Each row represents a complaint reported to NYPD. Only valid complaints are included in this release. Complaints deemed unfounded due to reporter error or misinformation are excluded from the data set, as they are not reflected in official figures nor are they considered to have actually occurred in a criminal context. Similarly, complaints that were voided due to internal error are also excluded from the data set.
+
+Property sales data from August to November 2016 were scraped from the real estate listing site Trulia. 
+
+Finally, a dissaggregate analysis was also conducted using data from Zillow. Data sources and some summary observations are in the disaggregate analysis section. 
+
+#### Obtain the data
+
+```{r loadpackes, warning=FALSE, message=FALSE}
+#library(plyr)
+library(dplyr)
+library(corrplot)
+library(ggmap)
+library(RMySQL)
+library(RCurl)
+library(XML)
+library(tidyr)
+library(stringr)
+library(ggplot2)
+library(geosphere)
+```
+
+
+```{r eval=FALSE}
+temp <- tempfile()
+download.file("https://raw.githubusercontent.com/cunyauthor/FinalProject/master/NYPD_Complaint_Data_Historic.zip",temp)
+NYPD <- read.csv(unz(temp, "NYPD_Complaint_Data_Historic.csv"), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
+unlink(temp)
+
+str(NYPD)
+head(NYPD)
+```
+
+
+#### Scrub and explore the data
+
+A subset of the crime data was created with only variables required for the analysis. All missing data were removed from the dataset, the resulting dataset contained 4500,000+ cases.
+
+A random sample was taken to create a sample of 11,700 cases. The sample was broken into 5 smaller samples in order to add Google API to match longitude and latitude in the data to street addresses. Google API allowed 2,500 free downloads per 24 hour period.
+
+We had a challenge here as there is no single standard defining of violent crime, there are two standards, NCVS [Bureau of Justice Statistics National Crime Victimization Survey](https://www.bls.gov/index.cfm?ty=dcdetail&iid=245) and the UCR [Federal Bureau of Investigation's Uniform Crime Report](https://ucr.fbi.gov) and they were not fully compatible with the description of the NYC PD. 
+
+To solve this we create our own definition of violent crime, we filter from the main the follow crime categories: DANGEROUS WEAPONS,FELONY ASSAULT,KIDNAPPING & RELATED OFFENSES,MURDER & NON-NEGL. MANSLAUGHTER,ROBBERY and SEX CRIMES.
+
+```{r eval=FALSE}
+class(NYPD) #view class
+dim(NYPD)   #view dimensions
+names(NYPD) #explore the column names
+unstand the structure
+str(NYPD)  
+
+new <- select(NYPD, RPT_DT, OFNS_DESC, OFNS_DESC, LAW_CAT_CD, BORO_NM, ADDR_PCT_CD,
+              Latitude, Longitude, Lat_Lon) # data with required variables
+
+sapply(new, function(x) sum(is.na(x))) # review NAs in the data
+noNas <- na.omit(new) # remove NAs from data
+sapply(noNas, function(x) sum(is.na(x)))
+glimpse(noNas) #look at the data
+
+summary(noNas) #summarize the data
+```
+
+
+##### Create datasets with Google API addresses, crime index
+```{r sampling data}
+#set.seed(123) # set the seed to standardize
+#nyc<-noNas[sample(nrow(noNas),458557),] # random the sample to standardize the sequence
+#nyc$id<-1:458557 # create a id to check
+
+# Create datasets with Google API
+#nyc_1<-nyc[1:2400,]# 
+#res <- mapply(FUN = function(lon, lat) {
+        #revgeocode(c(lon, lat), output = "more")
+#},
+#nyc_1$Longitude, nyc_1$Latitude
+#)
+#res1<-rbind_all(lapply(res, as.data.frame))
+#View(res1)
+#nyc_1<-cbind(nyc_1,res1) # add full address to data base
+#write.csv(nyc_51 file = 'nyc_1.csv', row.names = FALSE) #write to csv
+#head(nyc_1)
+
+#nyc_2<-nyc[2401:4800,]  
+#res <- mapply(FUN = function(lon, lat) {
+        #revgeocode(c(lon, lat), output = "more")
+#},
+#nyc_2$Longitude, nyc_2$Latitude
+#)
+#res1<-rbind_all(lapply(res, as.data.frame))
+#View(res1)
+#nyc_2<-cbind(nyc_2,res1) # add full address to data base
+#write.csv(nyc_2, file = 'nyc_2.csv', row.names = FALSE) #write to csv
+#head(nyc_2)
+
+#nyc_3<-nyc[4801:6900,]# 2nd Dec Sharon sample # (for today)
+#res <- mapply(FUN = function(lon, lat) {
+        #revgeocode(c(lon, lat), output = "more")
+#},
+#nyc_3$Longitude, nyc_3$Latitude
+#)
+#res1<-rbind_all(lapply(res, as.data.frame))
+#View(res1)
+#nyc_3<-cbind(nyc_3,res1) # add full address to data base
+#write.csv(nyc_3, file = 'nyc_3.csv', row.names = FALSE) #write to csv
+#head(nyc_3)
+
+#nyc_4<-nyc[7201:9600,]# 
+#res <- mapply(FUN = function(lon, lat) {
+        #revgeocode(c(lon, lat), output = "more")
+#},
+#nyc_4$Longitude, nyc_4$Latitude
+#)
+#res1<-rbind_all(lapply(res, as.data.frame))
+#View(res1)
+#nyc_4<-cbind(nyc_4,res1) # add full address to data base
+#write.csv(nyc_4, file = 'nyc_4.csv', row.names = FALSE) #write to csv
+#head(nyc_4)
+
+#nyc_5<-nyc[9600:12000,]# 
+#res <- mapply(FUN = function(lon, lat) {
+        #revgeocode(c(lon, lat), output = "more")
+#},
+#nyc_5$Longitude, nyc_5$Latitude
+#)
+#res1<-rbind_all(lapply(res, as.data.frame))
+#View(res1)
+#nyc_5<-cbind(nyc_5,res1) # add full address to data base
+#write.csv(nyc_5, file = 'nyc_5.csv', row.names = FALSE) #write to csv
+#head(nyc_5)
+```
+
+```{r readdata}
+# read the nyc data
+urlfile<-"https://raw.githubusercontent.com/cunyauthor/FinalProject/master/nyc_15.csv"
+nyc_1<-read.csv(url(urlfile), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
+
+nyc_1$postal_code<-as.character(nyc_1$postal_code)
+
+# create new column for violent crime 
+nyc_1<-nyc_1[-10639,]
+index<-c("DANGEROUS WEAPONS","FELONY ASSAULT","KIDNAPPING & RELATED OFFENSES","MURDER & NON-NEGL. MANSLAUGHTER","ROBBERY","SEX CRIMES")
+nyc_1$crime_v<-index[(match(nyc_1$OFNS_DESC,index))]
+nyc_1$crime_v<-as.factor(nyc_1$crime_v)
+
+# agrregate the crime data by zip code
+nyc_s1<-aggregate(OFNS_DESC ~ postal_code, nyc_1, length)
+nyc_s2<-aggregate(crime_v ~ postal_code, nyc_1, length)
+
+colnames(nyc_s1) <- c("zip","freq_crime")
+colnames(nyc_s2) <- c("zip","freq_violent_crime")
+
+# joint two tables of crime data
+nyc_s12<-left_join(nyc_s1, nyc_s2, "zip")
+# change NA for zero 
+nyc_s12[is.na(nyc_s12)]<-0
+# Crime table
+head(nyc_s12)
+#crime summary
+summary(nyc_s12$freq_crime)
+sd(nyc_s12$freq_crime)
+summary(nyc_s12$freq_violent_crime)
+sd(nyc_s12$freq_violent_crime)
+
+# Read data from real state 
+urlfile<-"https://raw.githubusercontent.com/cunyauthor/FinalProject/master/trulia_sqft.csv"
+trulia<-read.csv(url(urlfile), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
+
+# Read the table
+urlfile<-"https://raw.githubusercontent.com/cunyauthor/FinalProject/master/zip_neig.csv"
+zip_neig<-read.csv(url(urlfile), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
+ 
+#joint crime data with borough and neighborhood
+ zip_neig$zip<-as.character(zip_neig$zip)
+nyc_s12<-left_join(nyc_s12,zip_neig, "zip")
+head(nyc_s12)
+
+# Statistics summary of NYC prices
+summary(trulia$Median_sales_price)
+summary(trulia$Price_sqft)
+# Trulia table price by zip
+head(trulia)
+# Change zip to as.character
+trulia$zip<-as.character(trulia$zip)
+# Join the two tables
+nyc_full<-inner_join(trulia,nyc_s12, "zip")
+head(nyc_full)
+
+# read population by ZIP frm 2010 US Census
+urlfile<-"https://raw.githubusercontent.com/cunyauthor/FinalProject/master/pop_zip_census.csv"
+zip_pop<-read.csv(url(urlfile), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
+
+colnames(zip_pop) <- c("zip","pop")
+zip_pop$zip<-as.character(zip_pop$zip)
+
+# Join the two tables, add population data
+nyc_full<-inner_join(nyc_full,zip_pop, "zip")
+
+# Include crime rate data per 1000.000 habit per year by zip
+nyc_full$crime_rate<-(nyc_full$freq_crime/nyc_full$pop)*100000 * 458557/nrow(nyc_1)
+nyc_full$v_crime_rate<-(nyc_full$freq_violent_crime/nyc_full$pop)*100000 * 458557/nrow(nyc_1)
+```
+
+
+
+```{r ,warning=FALSE, message=FALSE}
+#Database schema
+#source("logincredentiasl.R")
+#rmysql.settingsfile<-"C:/Program Files/MySQL/MySQL Server 5.0/my.ini"
+#connection <- dbConnect(MySQL(),username="root", password="password")
+
+#dbSendQuery(connection, 'CREATE SCHEMA IF NOT EXISTS SYS;')
+#dbSendQuery(connection, 'USE SYS;')
+#dbSendQuery(connection, 'DROP TABLE IF EXISTS nyc_1;')
+#dbSendQuery(connection, 'Drop Table If Exists nyc_full;')
+#dbSendQuery(connection, 'Drop Table If Exists nyc_s1;')
+#dbSendQuery(connection, 'Drop Table If Exists nyc_s12;')
+#dbSendQuery(connection, 'Drop Table If Exists nyc_s2;')
+#dbSendQuery(connection, 'Drop Table If Exists trulia;')
+#dbSendQuery(connection, 'Drop Table If Exists zip_pop;')
+
+#urlfile<-"https://raw.githubusercontent.com/cunyauthor/FinalProject/master/nyc_15.csv"
+#nyc_1<-read.csv(url(urlfile), encoding="latin1", na.strings=c("","NA"), stringsAsFactors = F)
+
+#dbWriteTable(connection, "tbl_nyc1", nyc_1, append = TRUE, row.names = FALSE)
+#dbSendQuery(connection, "ALTER TABLE tbl_nyc1
+            #MODIFY COLUMN id varchar(100) NOT NULL,            
+            #MODIFY COLUMN RPT_DT varchar(100) NOT NULL,
+            #MODIFY COLUMN OFNS_DESC varchar(100) NOT NULL,
+            #MODIFY COLUMN BORO_NM varchar(100) NOT NULL,
+            #MODIFY COLUMN ADDR_PCT_CD varchar(100) NULL,
+            #MODIFY COLUMN Latitude varchar(100) NULL,
+            #MODIFY COLUMN Longitude varchar(100) NULL,
+            #MODIFY COLUMN Lat_Lon varchar(100) NULL,
+            #MODIFY COLUMN address varchar(200) NULL,
+            #MODIFY COLUMN street_number varchar(100) NULL,
+            #MODIFY COLUMN route varchar(100) NULL,
+            #MODIFY COLUMN neighborhood varchar(100) NULL,
+            #MODIFY COLUMN political varchar(100) NULL,
+            #MODIFY COLUMN administrative_area_level_2 varchar(100) NULL,
+            #MODIFY COLUMN administrative_area_level_1 varchar(100) NULL,
+            #MODIFY COLUMN country varchar(100) NULL,
+            #MODIFY COLUMN postal_code varchar(100) NULL,
+            #MODIFY COLUMN postal_code_suffix varchar(100) NULL,
+            #MODIFY COLUMN locality varchar(100) NULL,
+            #MODIFY COLUMN premise varchar(100) NULL,
+            #MODIFY COLUMN crime_v  varchar(150) NULL
+            #;")
+
+
+#urlfile<-"https://raw.githubusercontent.com/cunyauthor/FinalProject/master/pop_zip_census.csv"
+#zip_pop<-read.csv(url(urlfile), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
+#colnames(zip_pop) <- c("zip","pop")# rename variables
+#dbWriteTable(connection, "tbl_zip_pop", zip_pop, append = TRUE, row.names = FALSE)
+#dbSendQuery(connection, "ALTER TABLE tbl_zip_pop
+            #MODIFY COLUMN zip varchar(10) NOT NULL,
+            #MODIFY COLUMN pop varchar(50) NOT NULL
+            #;")
+
+#urlfile<-"https://raw.githubusercontent.com/cunyauthor/FinalProject/master/zip_neig.csv"
+#zip_neig<-read.csv(url(urlfile), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
+
+#dbWriteTable(connection, "tbl_zip_neig", zip_neig, append = TRUE, row.names = FALSE)
+#dbSendQuery(connection, "ALTER TABLE tbl_zip_neig
+            #MODIFY COLUMN Borough varchar(100) NOT NULL,
+            #MODIFY COLUMN Neighborhood varchar(100) NOT NULL,
+            #MODIFY COLUMN zip varchar(10) NOT NULL
+            #;")
+
+#urlfile<-"https://raw.githubusercontent.com/cunyauthor/FinalProject/master/trulia_sqft.csv"
+#trulia<-read.csv(url(urlfile), encoding="UTF-8", na.strings=c("","NA"), stringsAsFactors = F)
+
+#dbWriteTable(connection, "tbl_trulia", trulia, append = TRUE, row.names = FALSE)
+#dbSendQuery(connection, "ALTER TABLE tbl_trulia
+            #MODIFY COLUMN x varchar(10) NOT NULL,
+            #MODIFY COLUMN zip varchar(10) NOT NULL,
+            #MODIFY COLUMN Median_sales_price varchar(50) NOT NULL,
+            #MODIFY COLUMN Price_sqft varchar(50) NOT NULL
+            #;")
+
+#dbSendQuery(connection, 'DROP TABLE IF EXISTS nyc_1;')
+#dbSendQuery(connection, 'Drop Table If Exists nyc_full;')
+#dbSendQuery(connection, 'Drop Table If Exists nyc_s1;')
+#dbSendQuery(connection, 'Drop Table If Exists nyc_s12;')
+#dbSendQuery(connection, 'Drop Table If Exists nyc_s2;')
+#dbSendQuery(connection, 'Drop Table If Exists trulia;')
+#dbSendQuery(connection, 'Drop Table If Exists zip_pop;')
+#dbDisconnect(connection)
+```
+
+
+#### Model the Data
+
+```{r ,warning=FALSE, message=FALSE}
+#Correlation matrix
+nyc_full$X <- NULL
+m1<- subset(nyc_full, select=-c(zip,Borough,Neighborhood))
+colnames(m1)<-c("median crime", "price sqr/ft", "count crime", "count violent crime",
+                 "population", "crime rate", "violent crime rate") 
+m<-cor(m1)
+corrplot(m, type="upper", order="hclust", t1.col="black",t1.srt=45)
+
+# Scatterplot with regression line
+ggplot(nyc_full,aes(y = Price_sqft, x = freq_violent_crime)) +
+    geom_point() + ggtitle("Sales Price per Square Foot vs Violent Crime by ZIP") + 
+    xlab("Violent Crime") + ylab("Price per Square Foot") + 
+    geom_smooth(method="lm", fill=NA) +
+    theme(plot.title = element_text(color="blue", size=14, face="bold"),
+          axis.title.x = element_text(color="black", size=10, face="bold"),
+          axis.title.y = element_text(color="black", size=10, face="bold"))
+
+# Regression analysis
+lmt<-lm(Price_sqft ~ freq_violent_crime, nyc_full)
+summary(lmt)
+
+```
+
+# Dissaggregate Analysis
+
+# Goals and Aims
+In addition to the aggregate analysis (focusing on median prices at the zip code level), we wanted to understand the impact of crime and other attibutes on property values(number of bedrooms, bathrooms, distance from the Central Business District and "neigbhorhood premium") at a disaggregate level. Due to Zillow API call limits and time the analysis focused on Northwest and Central Brooklyn, in New York City - however the approach is very general and can easily be extended to other areas of Brooklyn and even New York City. 
+
+
+# Phase I: Getting the data
+The data is collected from different sources.   
+1. Planning data from Pluto for Addresses (input to Zillow) 
+2. Real Estate data from Zillow (using Zillow's deepsearch API)    
+3. Crime data from NYPD 
+
+
+### i) Planning database
+Pluto data from NYC planning department is used to provide addresses to get the latest data from Zillow (source:http://www1.nyc.gov/site/planning/data-maps/open-data/dwn-pluto-mappluto.page). Addresses obtained are then used to make call from the Zillow API.    
+The code below identifies how these addresses were selected - primarily using building codes. Since the zillow API places a constraint of 1000 calls per day and due to limited time, the analysis 
+
+
+```{r Identify Addresses}
+#source pluto database from NYC
+plutodata<-read.csv(text=getURL("https://raw.githubusercontent.com/cunyauthor/FinalProject/master/BK.csv"),header=TRUE,stringsAsFactors=FALSE) 
+
+#focus analysis on certain zip codes
+#central brooklyn, northwest brooklyn and greenpoint
+#filter by zip code
+nw<-c("11201", "11205", "11215", "11217", "11231")
+gp<-c("11211", "11222")
+cb<-c("11212", "11213", "11216", "11233", "11238")
+
+#select residential buildings 
+#filter data by building types and codes
+#two family
+fmly<-c("B1","B2","B3")
+#walkup Apartments
+walkup<-c("C0","C1","C2","C3","C4","C5","C6","C7")
+# Elevator Apartments
+elev<-c("D0","D1","D3","D4","D5","D6","D7","D8")
+#Condominiums
+condo<-c("R1","R2","R3","R4","R6","RD","RM","RR")
+#combined buildings
+# limiting type of buildings due to constraints imposed by zillow of 1000 API calls per day
+buildings<-c(elev,condo)
+
+#select neighborhood areas and building types
+selectdata<-plutodata %>% filter(ZipCode==nw[1] | ZipCode==nw[2] | ZipCode==nw[3] | ZipCode==nw[4]| ZipCode==nw[5] | ZipCode==cb[1] | ZipCode==cb[2]| ZipCode==cb[3]| ZipCode==cb[4] | ZipCode==cb[5])
+
+#select buidings
+finaldata<-selectdata[(selectdata$BldgClass %in% buildings),]
+#select columns
+finaldata<-select(finaldata,one_of(c("CD","CT2010","CB2010","SchoolDist","ZipCode","Address","BldgClass","UnitsRes","YearBuilt","NumFloors")))
+
+# dimensions of data
+dim(finaldata)
+# head of the data
+head(finaldata)
+#convert factors to character types
+finaldata$Address<-as.character(finaldata$Address)
+finaldata$BldgClass<-as.character(finaldata$BldgClass)
+#structure of dataset
+str(finaldata)
+# Count of Zipcodes covered
+finaldata %>% count(ZipCode)
+# Count of Building Class
+finaldata %>% count(BldgClass)
+```
+
+### ii) Zillow Data
+Addresses from the New York City Pluto database are used to make API calls to Zillow. Addresses are a required input to the Zillow API. As part of the analysis we define three functions to collect data from Zillow.The code was modified and adapted (signficantly) from the following stackoverflow source (http://stackoverflow.com/questions/17349630/r-dataframe-from-xml-when-values-are-multiple-or-missing).       
+The **zillowcaller** function takes in as inputs addresses in zillow api call form, zip codes and the number of calls to make and the starting number of the call. The  **zillowfunction** function takes as input the parsed XML from the API and then selects various attributes from the XML nodes. Finally the **zillowaggregator** combined all the attributes into a single dataframe.              
+We use the **GetDeepSearch** API from zillow for this analysis.      
+    
+```{r Prepare for Zillow}
+#select all the addresses
+address<-finaldata$Address
+#make it to zillow form
+address<-str_replace_all(address," ","+")
+#city state to zillow form
+citystate<-str_c("Brooklyn%2C+NY+",finaldata$ZipCode)
+
+#URL for the deep search API at Zillow
+zillow_url<-"http://www.zillow.com/webservice/GetDeepSearchResults.htm?"
+
+#define a function to make api calls
+zillowcaller<-function(add,zip,nos,start,zillowadd){
+for (i in 1:nos) {
+  feed<-getURL(paste0(zillowadd,"zws-id=",getOption("zillowid"),"&address=",add[i+start],"&citystatezip=",zip[i+start]))
+  Sys.sleep(1)
+  if(i==1){
+    last<-xmlParse(feed)
+  }
+  else {
+    temp<-xmlParse(feed)
+    last<-c(last,temp)
+  }
+}
+  return(last)
+}
+
+
+# define zillow function to parse and extract relevant attributes from zillow api calls
+zillowfunction<-function(xmldata){
+do.call(rbind, xpathApply(xmldata, "//result", function(node) {
+
+   zpid<-xmlValue(node[["zpid"]])
+   bathrooms <- xmlValue(node[["bathrooms"]])
+   bedrooms <- xmlValue(node[["bedrooms"]])
+   sqft<-xmlValue(node[["finishedSqFt"]])
+   st <- xpathSApply(node,"./address/street", xmlValue)
+   zip <- xpathSApply(node,"./address/zipcode", xmlValue)
+   city<-xpathSApply(node,"./address/city", xmlValue)
+   state<-xpathSApply(node,"./address/state", xmlValue)
+   lat<-xpathSApply(node,"./address/latitude", xmlValue)
+   long<-xpathSApply(node,"./address/longitude", xmlValue)
+   valuation<-xpathSApply(node,"./zestimate/amount", xmlValue)
+   lowval<-xpathSApply(node,"./zestimate/valuationRange/low", xmlValue)
+   highval<-xpathSApply(node,"./zestimate/valuationRange/high", xmlValue)
+   nb<-xpathSApply(node,"//result/localRealEstate/region",xmlAttrs)[[1]]
+   nbid<-xpathSApply(node,"//result/localRealEstate/region",xmlAttrs)[[2]]
+   return(data.frame(zpid,bathrooms, bedrooms,sqft,st,city,state,lat,long,valuation,lowval,highval,nb,nbid, stringsAsFactors = FALSE))
+}))
+}
+
+#zillow aggregator function
+zillowaggregator <- function(call){
+for (i in 2:length(call)) {
+  if(i==2) {
+    output<-rbind(zillowfunction(call[[1]]),zillowfunction(call[[2]]))
+  }
+else {
+  output<-rbind(output,zillowfunction(call[[i]]))
+     }
+}
+  return(output)
+}
+
+```
+
+We make the zillow api calls below to collect the data. However, due to call limits we have already collected the data and stored on github for this analysis.      
+
+```{r make Zillow calls}
+#return a list of calls to api
+#daily limit of 1000 calls  
+
+#calls were made over 2 days to meet the limits
+
+#firstcall<-zillowcaller(address,citystate,40,0,zillow_url)
+#zillowdata<-zillowaggregator(firstcall)
+#secondcall<-zillowcaller(address,citystate,980,40,zillow_url)
+#two<-zillowaggregator(secondcall)
+#thirdcall<-zillowcaller(address,citystate,972,1020,zillow_url)
+#three<-zillowaggregator(thirdcall)
+#zillowdata<-rbind(zillowdata,three,two)
+
+#read in the precollected data from github
+zillowdata<-read.csv(text=getURL("https://raw.githubusercontent.com/cunyauthor/FinalProject/master/zillowdata.csv"),stringsAsFactors = FALSE)
+zillowdata<-rename(zillowdata,number=X)
+```
+# Phase II: Cleaning the data
+
+```{r Clean Zillow Data}
+zillowdata$zpid<-as.numeric(zillowdata$zpid)
+zillowdata$nbid<-as.numeric(zillowdata$nbid)
+zillowdata$valuation<-as.numeric(zillowdata$valuation)
+zillowdata$lowval<-as.numeric(zillowdata$lowval)
+zillowdata$highval<-as.numeric(zillowdata$highval)
+zillowdata$bedrooms<-as.integer(zillowdata$bedrooms)
+zillowdata$bathrooms<-as.numeric(zillowdata$bathrooms)
+zillowdata$sqft<-as.numeric(zillowdata$sqft)
+str(zillowdata)
+head(zillowdata)
+
+#select data to ensure unique observations
+zillowdata<-zillowdata[(zillowdata$zpid %in% unique(zillowdata$zpid)),]
+##select data where valuation and bedrooms are non-missing
+zillow_clean<-zillowdata[!is.na(zillowdata$bedrooms)&!is.na(zillowdata$valuation),]
+#remove homes greater than 5 bedrooms
+zillow_clean<-filter(zillow_clean,bedrooms<=5)
+# remove homes greater $10 million
+zillow_clean<-filter(zillow_clean,valuation<=10000000)
+# remove neighborhoods with less than 10 observations
+neighborhoods<-c("Canarsie","Williamsburg","Ocean Hill","Brownsville","Chelsea","Vinegar Hill","Garment District","Greenwood","Red Hook","Wingate")
+
+zillow_clean<-zillow_clean[!(zillow_clean$nb %in% neighborhoods),]
+```
+
+
+### Calculating Distance
+Property prices have a distance and accessibility premium. Residential properties 
+```{r Distance}
+# Identify a point in Manhattan
+#location refers to mid-town Manhattan
+ref_lat=40.75047
+ref_long=-73.98961
+ref_loc<-c(ref_long,ref_lat)
+zillow_clean$ref_long<-ref_long
+zillow_clean$ref_lat<-ref_lat
+
+# calculate "crow-fly" distance between mid-town and property location 
+zillow_clean$distance <- distGeo(zillow_clean[,c('long','lat')], zillow_clean[,c('ref_long','ref_lat')],a=6378137,f=1/298.257223563
+)
+#convert distance to miles from meters
+zillow_clean$distance<-zillow_clean$distance*0.000621371
+```
+
+### Summary statistics
+      
+Summary statistics from the data. 
+```{r summary statistics}
+zillow_clean %>% count(nb) %>% arrange(desc(n))
+zillow_clean %>% count(bedrooms)
+zillow_clean %>% count(bathrooms)%>% arrange(desc(n))
+summarize(group_by(zillow_clean,nb),med=median(valuation),avg=mean(valuation))%>% arrange(desc(med))
+summarize(group_by(zillow_clean,bedrooms),med=median(valuation),avg=mean(valuation))%>% arrange(desc(med))
+```
+
+
+
+### Conducting some plots and visualizations
+The visualizations below show the valuation of the properties. Valuations show a very long tail and is similar to a log normal distribution
+```{r Data Visualizations1}
+#plot of the valuation data
+plot<-ggplot(data=zillow_clean,aes(x=valuation))
+plot+geom_histogram(fill="blue",binwidth = 100000)+ggtitle("Zillow House Prices")
+plot_lo<-ggplot(data=zillow_clean,aes(x=lowval))
+plot_lo+geom_histogram(fill="orange",binwidth = 100000)+ggtitle("Zillow House Prices- Low Estimate")+xlab("Low Valuation")
+plot_hi<-ggplot(data=zillow_clean,aes(x=highval))
+plot_hi+geom_histogram(fill="darkgreen",binwidth = 100000)+ggtitle("Zillow House Prices- High Estimate")+xlab("High Valuation")
+```
+
+```{r Data Visualizations2}
+#convert to factor
+zillow_clean$bedrooms<-as.factor(zillow_clean$bedrooms)
+zillow_clean$bathrooms<-as.factor(zillow_clean$bathrooms)
+#plot of square feet and valuation
+plot<-ggplot(data=zillow_clean[zillow_clean$sqft<10000&!is.na(zillow_clean$sqft),],aes(x=sqft, y=valuation))
+plot+geom_point(aes(color=bedrooms))+ggtitle("Valuations vs Sq.Ft")+ylab("Property Value in $")+scale_y_continuous(breaks=seq(0,10000000,2000000))
+#plot of distance and valuation
+plot<-ggplot(data=zillow_clean,aes(x=distance, y=valuation))
+plot+geom_point(aes(color=bedrooms))+ggtitle("Valuations vs Distance")+ylab("Property Value in $")+xlab("Distance in miles")+scale_y_continuous(breaks=seq(0,10000000,2000000))
+#Box plot of property prices 
+ggplot(zillow_clean, aes(y=valuation, x=bedrooms)) + geom_boxplot(aes(color=bedrooms))+ylab("Property Value in $")+xlab("Bedrooms")+ggtitle("Box Plots of Property Value")
+#Box plot of property sizes 
+ggplot(zillow_clean[zillow_clean$sqft<10000&!is.na(zillow_clean$sqft),], aes(y=sqft, x=bedrooms)) + geom_boxplot(aes(color=bedrooms))+ylab("Size in Square Feet")+xlab("Bedrooms")+ggtitle("Box Plots of Property Size")
+```
+
+#### Findings and Conclusion
+
+##### Summary Analysis
+All data was joined by ZIP code, ZIP was the better standard to connect all data base, we try by neighborhood but each source had its own definition, so we abandoned. We aggregate all data by ZIP code.
+
+There are differences between the full sales price among zip codes. The median sales price is different from mean, in some zipcode there is big change in the mean. The best central tendency here is median, which better reflect the reality.
+
+The price per square/foot is more stable with lower difference between mean and median, here mean can be adopted.
+ 
+In our analysis we focus in the price per square/foot this better to do comparison, remove the size, in the value
+
+In the crime data by zip there are large variability, for both crimes. The variability illustrates some areas are more violent than others. 
+
+The times series plot by crime (See charts Tableau Public.)  The mosaic plot shows, petit larceny is the most frequent, followed by harassment during the summer months so do overall crime rates.
+
+##### Correlation Matrix Plot
+The price square/foot has negative relationship with violent crime. The common crime doesn't have relationship with price square/foot or median sales price. The price square/foot doesn't have relationship with crime rate (crime/population).
+
+##### Regression Analysis
+There is negative relationship between violent crime and price square/foot, for each occurrence of violent crime the price drops US$ 32.90, at 0.05 significant level. There is a ($500) mean drop in price between areas with the most or least violent crimes. The crime frequency explain 17% of property value.
+
+There is no relationship with price and crime rate or violent crime rate, this is an interesting finding, for people interested in how the crime impacts price. Is not taken into account in the number of people (population). This can lead to an incorrect crime perception.
+
+#### Link to Tableau
+
+
+(https://public.tableau.com/profile/ka.man.chan#!/ "Tableau Visualizations")
+
+
+
+
+
+#### References
+The definition for violent crime was created using two existing standards NCVS [Bureau of Justice Statistics National Crime Victimization Survey](https://www.bls.gov/index.cfm?ty=dcdetail&iid=245) and the UCR [Federal Bureau of Investigation's Uniform Crime Report](https://ucr.fbi.gov)
+
+**1. Trulia real state**
+https://www.trulia.com/home_prices/New_York/New_York-heat_map/city_by_neighborhood/ALP/nh/
+ 
+**2. NYC Opendata City crime data**
+https://data.cityofnewyork.us/Public-Safety/Historical-New-York-City-Crime-Data/hqhv-9zeg
+ 
+**3. US Census 2010**
+http://www.census.gov/2010census/data/
+ 
+**4. New York State**
+https://www.health.ny.gov/statistics/cancer/registry/appendix/neighborhoods.htm
+ 
+**5. Violent crime definition**
+https://en.wikipedia.org/wiki/Violent_crime
+   
+**6. Google API**
+https://developers.google.com/maps/pricing-and-plans/
+ 
+**7. R ggmap (Google maps) package**                                https://cran.r-project.org/web/packages/ggmap/ggmap.pdf
+
+**8. Zillow API**  
