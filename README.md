@@ -14,3 +14,8 @@
 ### zip_neig.csv                         NY state zip/boroguh/neighborhood
 ### zillowdata.csv                      Zillow data collected through GetDeepSearch API from Zillow
 ### BK.csv                              NYC OPEN data released by NYC Department of Planning
+
+## Main links:
+Rpubs https://rpubs.com/Sharon_1684/236229
+Public Tableau https://public.tableau.com/profile/ka.man.chan#!/
+
